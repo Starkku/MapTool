@@ -152,7 +152,7 @@ namespace MapTool
                     parseConfigFile(tilerules, this.tilerules);
                     parseConfigFile(overlayrules, this.overlayrules);
                     parseConfigFile(objectrules, this.objectrules);
-                    parseConfigFile(sectionrules, this.sectionrules);
+                    //parseConfigFile(sectionrules, this.sectionrules);
                 }
             }
 

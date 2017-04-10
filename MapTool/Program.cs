@@ -103,7 +103,7 @@ namespace MapTool
                 map.ConvertTileData();
                 map.ConvertOverlayData();
                 map.ConvertObjectData();
-                map.ConvertSectionData();
+                //map.ConvertSectionData();
             }
             if (map.Altered)
             {
