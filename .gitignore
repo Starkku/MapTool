@@ -4,3 +4,4 @@ MapTool_UI/obj
 MapTool/bin
 MapTool_UI/bin
 .vs
+*.user
