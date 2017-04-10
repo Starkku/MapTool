@@ -297,7 +297,7 @@ namespace MapTool_UI
         }
     }
 
-    public class ListBoxFile
+    class ListBoxFile
     {
         public string FileName { get; set; }
         public string DisplayName { get; set; }
@@ -316,7 +316,7 @@ namespace MapTool_UI
         }
     }
 
-    public class ListBoxProfile
+    class ListBoxProfile
     {
         public string FileName { get; set; }
         public string Name { get; set; }
