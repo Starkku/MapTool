@@ -29,33 +29,43 @@ A single theater ID which is assigned on any processed maps.
 
 A list of tile index conversion rules, each on it's own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values.
 
-**Example #1:**  
-[TileRules]  
-0-15|25-40  
+**Example #1:**
+<pre>
+[TileRules]
+0-15|25-40
+</pre>
 
 Tiles 0-15 will get converted to tiles 25-40, respectively, respecting the range declarations.
 
-**Example #2:**  
-[TileRules]  
-0-15|25  
+**Example #2:**
+<pre>
+[TileRules]
+0-15|25
+</pre>
 
 This example should produce results identical with the first one.
 
-**Example #3:**  
-[TileRules]  
-0-15|25-25  
+**Example #3:**
+<pre>
+[TileRules]
+0-15|25-25
+</pre>
 
 Using a range declaration with identical start and end points as destination forces all matching source tiles to be converted to that specific tile.
 
-**Example #4:**  
-[TileRules]  
-0-15|25-40|1  
+**Example #4:**
+<pre>
+[TileRules]
+0-15|25-40|1
+</pre>
 
 Adding a third value overrides the height of all of the applicable tiles with specific value. Only values from 0 to 14 are respected, with values lower than 0 interpreted as 0, and values higher than 14 interpreted as 14.
 
-**Example #5:**  
-[TileRules]  
-0-15|25-40|*|0  
+**Example #5:**
+<pre>
+[TileRules]
+0-15|25-40|*|0
+</pre>
 
 Fourth value serves as an override to tile's sub-tile index, serving to determine which particular piece of that tile is used for a map cell. It might be necessary to set the override to 0 if you are converting from tiles with more than one sub-tile to a tile with just one.
 
@@ -66,9 +76,11 @@ Also worth noting is that if you declare sub-tile index override, you must also 
 
 A list of overlay ID conversion rules, each on it's own line with a | as a separator between source and destination value.
 
-**Example:**  
-[OverlayRules]  
-0|5  
+**Example:**
+<pre>
+[OverlayRules]
+0|5
+</pre>
 
 All overlays with ID 0 are converted to overlays with ID 5.
 
@@ -79,9 +91,11 @@ Values from 0 to 254 are available for regular use. Using 255 as destination ID 
 
 A list of object ID conversion rules, each on it's own line with a | as a separator between source and destination value.
 
-**Example:**  
-[ObjectRules]  
-GACNST|YACNST  
+**Example:**
+<pre>
+[ObjectRules]
+GACNST|YACNST
+</pre>
 
 Will convert any objects, be it Infantry, Building, Aircraft or Vehicle, with ID GACNST on the processed maps to an object of same type with ID YACNST.
 
