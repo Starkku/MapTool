@@ -54,21 +54,21 @@ THE SOFTWARE.
 Above license __does not apply__ to following portions of this software which are licensed under different, conflicting licenses.
 
 * NLog, which is released under a [3-clause BSD License](https://github.com/NLog/NLog/blob/master/LICENSE.txt).
- * NLog.dll, NLog.config
+  * NLog.dll, NLog.config
 * Code from CnCMaps Renderer project, which is released under [GPLv3](https://github.com/zzattack/ccmaps-net/blob/master/COPYING).
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format5.cs
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format80.cs
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MemoryFile.cs
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MiniLZO.cs
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/VirtualFile.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format5.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format80.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MemoryFile.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MiniLZO.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/VirtualFile.cs
 * Code from OpenRA project, which is released under [GPLv3](https://raw.github.com/OpenRA/OpenRA/master/COPYING).
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format80.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format80.cs
 * MiniLZO by Markus F.X.J. Oberhumer, released under [GPL v2+](http://www.oberhumer.com/opensource/gpl.html).
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MiniLZO.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MiniLZO.cs
 
 In addition, code from following projects with similar, compatible licenses is used.
 
 * NDesk Options
- * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Options.cs
+  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Options.cs
 * Nini
- * http://nini.sourceforge.net/license.php
+  * http://nini.sourceforge.net/license.php
