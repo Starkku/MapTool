@@ -1,17 +1,12 @@
 ﻿#region Copyright & License Information
 
 /*
- * Modified for CNCMaps Renderer by Frank Razenberg
- * https://github.com/zzattack/ccmaps-net/blob/master/CNCMaps.FileFormats/Encodings/Format80.cs
- */
-/*
  * Copyright 2007-2011 The OpenRA Developers
  * (see https://raw.github.com/OpenRA/OpenRA/master/AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation. For more information,
  * see COPYING.
- * https://raw.github.com/OpenRA/OpenRA/master/COPYING
  */
 
 #endregion

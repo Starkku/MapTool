@@ -29,46 +29,11 @@ Special thanks to the following open source projects and people who have contrib
 
 ## License
 
-The MIT License (MIT)
+See [COPYING](https://github.com/starkku/maptool/blob/master/COPYING).
 
-Copyright (c) 2017 Starkku
+In addition, binaries from following open-source projects are used in MapTool:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-Above license __does not apply__ to following portions of this software which are licensed under different, conflicting licenses.
-
-* NLog, which is released under a [3-clause BSD License](https://github.com/NLog/NLog/blob/master/LICENSE.txt).
-  * NLog.dll, NLog.config
-* Code from CnCMaps Renderer project, which is released under [GPLv3](https://github.com/zzattack/ccmaps-net/blob/master/COPYING).
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format5.cs
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format80.cs
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MemoryFile.cs
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MiniLZO.cs
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/VirtualFile.cs
-* Code from OpenRA project, which is released under [GPLv3](https://raw.github.com/OpenRA/OpenRA/master/COPYING).
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Format80.cs
-* MiniLZO by Markus F.X.J. Oberhumer, released under [GPL v2+](http://www.oberhumer.com/opensource/gpl.html).
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/MiniLZO.cs
-
-In addition, code from following projects with similar, compatible licenses is used.
-
-* NDesk Options
-  * https://github.com/starkku/maptool/blob/master/MapTool/Utility/Options.cs
-* Nini
-  * http://nini.sourceforge.net/license.php
+* [NLog](http://nlog-project.org)
+  * https://github.com/starkku/maptool/blob/master/LICENSE_NLog.txt
+* [Nini](http://nini.sourceforge.net)
+  * https://github.com/starkku/maptool/blob/master/LICENSE_Nini.txt
