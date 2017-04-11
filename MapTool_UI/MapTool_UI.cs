@@ -51,7 +51,7 @@ namespace MapTool_UI
         {
             if (!File.Exists(AppDomain.CurrentDomain.BaseDirectory + MapToolExecutable))
             {
-                MessageBox.Show("Could not find the map tool executable in the program directory. Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+                MessageBox.Show("Could not find the map tool executable (" + MapToolExecutable + ") in the program directory. Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
                 Close();
                 Environment.Exit(1);
             }
@@ -67,6 +67,12 @@ namespace MapTool_UI
             }
 
             string[] files = Directory.GetFiles(ProfileDirectory, "*.ini", SearchOption.TopDirectoryOnly);
+            if (files.Length < 1)
+            {
+                MessageBox.Show("Could not find any conversion profiles in the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+                Close();
+                Environment.Exit(1);
+            }
             foreach (string s in files)
             {
                 try

@@ -72,6 +72,7 @@
     <Compile Include="TilesetCollection.cs" />
     <Compile Include="Utility\Format5.cs" />
     <Compile Include="Utility\Format80.cs" />
+    <Compile Include="Utility\Logger.cs" />
     <Compile Include="Utility\MemoryFile.cs" />
     <Compile Include="Utility\MiniLZO.cs" />
     <Compile Include="Utility\Options.cs" />

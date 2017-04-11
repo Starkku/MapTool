@@ -70,7 +70,7 @@ namespace MapTool
             if (!string.IsNullOrEmpty(fileInput) && !string.IsNullOrEmpty(fileOutput))
             {
 
-                logger.Info("Reading map file '" + infile + "'.");
+                Logger.Info("Reading map file '" + infile + "'.");
                 mapConfig = new INIFile(infile);
                 if (!mapConfig.Initialized)
                 {
@@ -88,7 +88,7 @@ namespace MapTool
                 if (!profileConfig.Initialized) Initialized = false;
                 else
                 {
-                    logger.Info("Parsing conversion profile file.");
+                    Logger.Info("Parsing conversion profile file.");
 
                     string IncludeFiles = profileConfig.GetKey("ProfileData", "IncludeFiles", null);
                     if (!string.IsNullOrEmpty(IncludeFiles))
@@ -101,7 +101,7 @@ namespace MapTool
                             {
                                 INIFile ic = new INIFile(basedir + "\\" + f);
                                 if (!ic.Initialized) continue;
-                                logger.Info("Merging included file '" + f + "' to conversion profile.");
+                                Logger.Info("Merging included file '" + f + "' to conversion profile.");
                                 profileConfig.Merge(ic);
                             }
                         }
@@ -136,7 +136,7 @@ namespace MapTool
 
                     if (tilerules == null && overlayrules == null && newTheater == null)
                     {
-                        logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
+                        Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
                         return;
                     }
@@ -163,16 +163,16 @@ namespace MapTool
         public void ConvertTheaterData()
         {
             if (!Initialized || applicableTheaters == null || newTheater == null) return;
-            logger.Info("Attempting to modify theater data of the map file.");
+            Logger.Info("Attempting to modify theater data of the map file.");
             if (mapTheater != null && !applicableTheaters.Contains(mapTheater))
             {
-                logger.Warn("Map theater declaration does not match profile configuration. No modifications will be made to the theater data.");
+                Logger.Warn("Map theater declaration does not match profile configuration. No modifications will be made to the theater data.");
                 return;
             }
             if (newTheater != "" && isValidTheatreName(newTheater))
             {
                 mapConfig.SetKey("Map", "Theater", newTheater);
-                logger.Info("Map theater declaration changed from '" + mapTheater + "' to '" + newTheater + "'.");
+                Logger.Info("Map theater declaration changed from '" + mapTheater + "' to '" + newTheater + "'.");
                 Altered = true;
             }
         }
@@ -180,8 +180,8 @@ namespace MapTool
         public void ConvertTileData()
         {
             if (!Initialized || isoMapPack5.Count < 1 || tilerules == null || tilerules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the tile data."); return; }
-            logger.Info("Attempting to modify tile data of the map file.");
+            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the tile data."); return; }
+            Logger.Info("Attempting to modify tile data of the map file.");
             ApplyTileConversionRules();
         }
 
@@ -214,13 +214,13 @@ namespace MapTool
                         }
                         if (r.New_End == r.New_Start)
                         {
-                            //logger.Trace("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + r.New_Start);
+                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + r.New_Start);
                             t.TileIndex = r.New_Start;
                             break;
                         }
                         else
                         {
-                            //logger.Trace("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + (r.New_Start + Math.Abs(l - t.TileIndex)));
+                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + (r.New_Start + Math.Abs(l - t.TileIndex)));
                             t.TileIndex = (r.New_Start + Math.Abs(l - t.TileIndex));
                             break;
                         }
@@ -402,7 +402,7 @@ namespace MapTool
 
         private bool parseMapPack()
         {
-            logger.Info("Parsing IsoMapPack5.");
+            Logger.Info("Parsing IsoMapPack5.");
             string data = "";
             string[] tmp = mapConfig.GetValues("IsoMapPack5");
             if (tmp == null || tmp.Length < 1) return false;
@@ -445,8 +445,8 @@ namespace MapTool
         public void ConvertObjectData()
         {
             if (!Initialized || overlayrules == null || objectrules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the object data."); return; }
-            logger.Info("Attempting to modify object data of the map file.");
+            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the object data."); return; }
+            Logger.Info("Attempting to modify object data of the map file.");
             ApplyObjectConversionRules("Aircraft");
             ApplyObjectConversionRules("Units");
             ApplyObjectConversionRules("Infantry");
@@ -467,13 +467,13 @@ namespace MapTool
                     {
                         if (rule.New == null)
                         {
-                            //logger.Trace("Removed " + sectionname + " object with ID '" + rule.Original + "' from the map file.");
+                            Logger.Debug("Removed " + sectionname + " object with ID '" + rule.Original + "' from the map file.");
                             mapConfig.RemoveKey(sectionname, kvp.Key);
                             Altered = true;
                         }
                         else
                         {
-                            //logger.Trace("Replaced " + sectionname + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
+                            Logger.Debug("Replaced " + sectionname + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
                             mapConfig.SetKey(sectionname, kvp.Key, kvp.Value.Replace("," + rule.Original + ",", "," + rule.New + ","));
                             Altered = true;
                         }
@@ -486,8 +486,8 @@ namespace MapTool
         {
             /*
             if (!Initialized || overlayrules == null || sectionrules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the section data."); return; }
-            logger.Info("Attempting to modify section data of the map file.");
+            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the section data."); return; }
+            Logger.Info("Attempting to modify section data of the map file.");
             ApplySectionConversionRules();
             fixSectionOrder = true;
             */
@@ -499,13 +499,13 @@ namespace MapTool
             foreach (SectionConversionRule rule in sectionrules)
             {
                 IConfig section = mapConfig.Configs[rule.SectionID];
-                if (section != null && rule.Type == SectionRuleType.Remove) { logger.Debug("Removed section '" + section.Name + "'."); mapConfig.Configs.Remove(section); Altered = true; continue; }
-                else if (section != null && rule.Type == SectionRuleType.Add) { logger.Debug("Added section '" + rule.SectionID + "'."); mapConfig.Configs.Add(rule.SectionID); Altered = true; section = mapConfig.Configs[rule.SectionID]; }
+                if (section != null && rule.Type == SectionRuleType.Remove) { Logger.Debug("Removed section '" + section.Name + "'."); mapConfig.Configs.Remove(section); Altered = true; continue; }
+                else if (section != null && rule.Type == SectionRuleType.Add) { Logger.Debug("Added section '" + rule.SectionID + "'."); mapConfig.Configs.Add(rule.SectionID); Altered = true; section = mapConfig.Configs[rule.SectionID]; }
                 else if (section == null) continue;
                 foreach (SectionKVP kvp in rule.KVPList)
                 {
-                    if (kvp.Type == SectionRuleType.Remove) { logger.Debug("Removed key '" + kvp.Key + "' from section '" + section.Name + "."); section.Remove(kvp.Key); Altered = true; continue; }
-                    else { section.Set(kvp.Key, kvp.Value); logger.Debug("Set section '" + section.Name + "' key '" + kvp.Key + "' value to '" + kvp.Value + "'."); Altered = true; continue; }
+                    if (kvp.Type == SectionRuleType.Remove) { Logger.Debug("Removed key '" + kvp.Key + "' from section '" + section.Name + "."); section.Remove(kvp.Key); Altered = true; continue; }
+                    else { section.Set(kvp.Key, kvp.Value); Logger.Debug("Set section '" + section.Name + "' key '" + kvp.Key + "' value to '" + kvp.Value + "'."); Altered = true; continue; }
                 }
             }
             */
@@ -514,11 +514,11 @@ namespace MapTool
         public void ConvertOverlayData()
         {
             if (!Initialized || overlayrules == null || overlayrules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the overlay data."); return; }
+            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the overlay data."); return; }
 
             parseOverlayPack();
 
-            logger.Info("Attempting to modify overlay data of the map file.");
+            Logger.Info("Attempting to modify overlay data of the map file.");
             ApplyOverlayConversionRules();
         }
 
@@ -536,13 +536,13 @@ namespace MapTool
                     {
                         if (rule.New_End == rule.New_Start)
                         {
-                            //logger.Trace("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + rule.New_Start + "'.");
+                            Logger.Debug("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + rule.New_Start + "'.");
                             overlayPack[i] = (byte)rule.New_Start;
                             break;
                         }
                         else
                         {
-                            //logger.Trace("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + (rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i])) + "'.");
+                            Logger.Debug("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + (rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i])) + "'.");
                             overlayPack[i] = (byte)(rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i]));
                             break;
                         }
@@ -554,14 +554,14 @@ namespace MapTool
 
         private void parseOverlayPack()
         {
-            logger.Info("Parsing OverlayPack.");
+            Logger.Info("Parsing OverlayPack.");
             string[] vals = mapConfig.GetValues("OverlayPack");
             if (vals == null || vals.Length < 1) return;
             byte[] format80Data = Convert.FromBase64String(concatStrings(vals));
             var overlayPack = new byte[1 << 18];
             Format5.DecodeInto(format80Data, overlayPack, 80);
 
-            logger.Info("Parsing OverlayDataPack.");
+            Logger.Info("Parsing OverlayDataPack.");
             vals = mapConfig.GetValues("OverlayDataPack");
             if (vals == null || vals.Length < 1) return;
             format80Data = Convert.FromBase64String(concatStrings(vals));
@@ -612,9 +612,9 @@ namespace MapTool
 
             TilesetCollection mtiles = TilesetCollection.ParseFromINIFile(theaterConfig);
 
-            if (mtiles == null || mtiles.Count < 1) { logger.Error("Could not parse tileset data from theater configuration file '" + theaterConfig.Filename + "'."); return; };
+            if (mtiles == null || mtiles.Count < 1) { Logger.Error("Could not parse tileset data from theater configuration file '" + theaterConfig.Filename + "'."); return; };
 
-            logger.Info("Attempting to list tileset data for a theater based on file: '" + theaterConfig.Filename + "'.");
+            Logger.Info("Attempting to list tileset data for a theater based on file: '" + theaterConfig.Filename + "'.");
             List<string> lines = new List<string>();
             int tilecounter = 0;
             lines.Add("Theater tileset data gathered from file '" + theaterConfig.Filename + "'.");
@@ -624,12 +624,12 @@ namespace MapTool
             {
                 if (ts.TilesInSet < 1)
                 {
-                    logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " skipped due to tile count of 0.");
+                    Logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " skipped due to tile count of 0.");
                     continue;
                 }
                 lines.AddRange(ts.getPrintableData(ref tilecounter));
                 lines.Add("");
-                logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " added to the list.");
+                Logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " added to the list.");
             }
             File.WriteAllLines(fileOutput, lines.ToArray());
         }

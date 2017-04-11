@@ -8,14 +8,10 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.IO;
-using NLog;
-using NLog.Config;
-using NLog.Targets;
 using NDesk.Options;
 using MapTool.Utility;
+using System.Reflection;
 
 namespace MapTool
 {
@@ -24,7 +20,6 @@ namespace MapTool
     {
         private static OptionSet options;
         private static Settings settings = new Settings();
-        private static NLog.Logger logger;
 
         static void Main(string[] args)
         {
@@ -36,9 +31,18 @@ namespace MapTool
             {"p|profilefile=", "Conversion profile file.", v => settings.FileConfig = v},
             {"l|list=", "List theater data based on this theater config file.", v => settings.List = v},
             {"c|convert", "Convert map tiles/overlay according to a profile file.", v => settings.Convert = true},
-            {"d|debug-logging", "If set, writes a (more detailed) log to a file called MapTool.log.", v => settings.DebugLogging = true}
+            {"d|debug-logging", "If set, writes a log to a file in program directory.", v => settings.DebugLogging = true}
             };
-            options.Parse(args);
+            try
+            {
+                options.Parse(args);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Encountered an error while parsing command-line parameters. Message: " + e.Message);
+                ShowHelp();
+                return;
+            }
             initLogger(settings.DebugLogging);
 
             bool error = false;
@@ -50,22 +54,22 @@ namespace MapTool
             }
             if (string.IsNullOrEmpty(settings.FileInput) && string.IsNullOrEmpty(settings.List))
             {
-                logger.Error("No valid input file specified.");
+                Logger.Error("No valid input file specified.");
                 ShowHelp();
                 error = true;
             }
             else if (!string.IsNullOrEmpty(settings.FileInput) && !File.Exists(settings.FileInput))
             {
-                logger.Error("Specified input file does not exist.");
+                Logger.Error("Specified input file does not exist.");
                 ShowHelp();
                 error = true;
             }
             if (error) return;
-            else logger.Info("Input file path OK.");
+            else Logger.Info("Input file path OK.");
 
             if ((settings.FileOutput == null || !Directory.Exists(Path.GetDirectoryName(settings.FileOutput))) && string.IsNullOrEmpty(settings.List))
             {
-                logger.Error("Specified output directory does not exist.");
+                Logger.Error("Specified output directory does not exist.");
                 ShowHelp();
                 return;
             }
@@ -73,17 +77,17 @@ namespace MapTool
             {
                 if (string.IsNullOrEmpty(settings.FileOutput))
                 {
-                    logger.Warn("No output file available. Using input as output.");
+                    Logger.Warn("No output file available. Using input as output.");
                     settings.FileOutput = Path.ChangeExtension(settings.List, ".txt");
                 }
             }
-            else logger.Info("Output file path OK.");
+            else Logger.Info("Output file path OK.");
 
             MapTool map = new MapTool(settings.FileInput, settings.FileOutput, settings.FileConfig, settings.List);
-            if (map.Initialized) logger.Info("MapTool initialized.");
+            if (map.Initialized) Logger.Info("MapTool initialized.");
             else
             {
-                logger.Error("MapTool could not be initialized. Aborting.");
+                Logger.Error("MapTool could not be initialized. Aborting.");
                 return;
             }
 
@@ -97,13 +101,13 @@ namespace MapTool
             {
                 if (settings.FileConfig == null || settings.FileConfig == "")
                 {
-                    logger.Error("Configuration file required for tile data conversion does not exist.");
+                    Logger.Error("Configuration file required for tile data conversion does not exist.");
                     ShowHelp();
                     error = true;
                 }
                 else if (!File.Exists(settings.FileConfig))
                 {
-                    logger.Error("Specified configuration file does not exist.");
+                    Logger.Error("Specified configuration file does not exist.");
                     ShowHelp();
                     error = true;
                 }
@@ -116,79 +120,19 @@ namespace MapTool
             }
             if (map.Altered)
             {
-                logger.Info("Saving the modified map as '" + settings.FileOutput + "'.");
+                Logger.Info("Saving the modified map as '" + settings.FileOutput + "'.");
                 map.Save();
             }
         }
 
-        private static void initLogger(bool debug = false)
+        private static void initLogger(bool writefile = false)
         {
+            string filename = AppDomain.CurrentDomain.BaseDirectory + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) +".log";
+            bool enabledebug = false; 
 #if DEBUG
-            debug = true;
+            enabledebug = true;
 #endif
-
-            if (LogManager.Configuration == null)
-            {
-                ColoredConsoleTarget target = new ColoredConsoleTarget();
-                target.Name = "console";
-                target.Layout = "${processtime:format=ss.fff} [${level}] ${message}";
-                target.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
-                {
-                    ForegroundColor = ConsoleOutputColor.Magenta,
-                    Condition = "level = LogLevel.Fatal"
-                });
-                target.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
-                {
-                    ForegroundColor = ConsoleOutputColor.Red,
-                    Condition = "level = LogLevel.Error"
-                });
-                target.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
-                {
-                    ForegroundColor = ConsoleOutputColor.Yellow,
-                    Condition = "level = LogLevel.Warn"
-                });
-                target.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
-                {
-                    ForegroundColor = ConsoleOutputColor.Gray,
-                    Condition = "level = LogLevel.Info"
-                });
-                target.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
-                {
-                    ForegroundColor = ConsoleOutputColor.DarkGray,
-                    Condition = "level = LogLevel.Debug"
-                });
-                target.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
-                {
-                    ForegroundColor = ConsoleOutputColor.White,
-                    Condition = "level = LogLevel.Trace"
-                });
-                LogManager.Configuration = new LoggingConfiguration();
-                LogManager.Configuration.AddTarget("console", target);
-#if DEBUG
-                LogManager.Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Debug, target));
-#else
-				LogManager.Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Info, target));
-#endif
-                LogManager.ReconfigExistingLoggers();
-            }
-
-            if (debug == true)
-            {
-                LoggingRule console = LogManager.Configuration.LoggingRules[0];
-                console.EnableLoggingForLevel(LogLevel.Debug);
-                FileTarget file = new FileTarget();
-                file.FileName = "MapTool.log";
-                file.Name = "file";
-                file.Layout = "${processtime:format=ss.fff} | ${logger} | ${pad:padding=7:inner=[${level}]} | ${message}";
-                file.KeepFileOpen = false;
-                file.DeleteOldFileOnStartup = true;
-                file.Encoding = Encoding.UTF8;
-                LogManager.Configuration.AddTarget("file", file);
-                LogManager.Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Trace, file));
-                LogManager.ReconfigExistingLoggers();
-            }
-
-            logger = NLog.LogManager.GetCurrentClassLogger();
+            Logger.Initialize(filename, writefile, enabledebug);
         }
 
         private static void ShowHelp()

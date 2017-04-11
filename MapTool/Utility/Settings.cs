@@ -7,10 +7,6 @@
  * information, see COPYING.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace MapTool.Utility
 {
     struct Settings
