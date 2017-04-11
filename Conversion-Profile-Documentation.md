@@ -15,11 +15,13 @@ Name displayed in the GUI for this profile.
 #### Description
 Description displayed in the GUI for this profile.
 
+#### IncludeFiles
+A comma-separated list of filenames including file extensions to read from *same directory as the current conversion profile*. Contents of these files will be merged with the current one. This only works on one level, so trying to include files from already included files will fail.
 
 ### TheaterRules
 
 #### ApplicableTheaters
-A comma-separated list of theater ID's which must match with one declared in a map for the tool to process it. Defaults to 'TEMPERATE, SNOW, URBAN, DESERT, NEWURBAN, LUNAR' if a list is omitted.
+A comma-separated list of theater ID's which must match with one declared in a map for the tool to process it. Defaults to <pre>ApplicableTheaters=TEMPERATE,SNOW,URBAN,DESERT,NEWURBAN,LUNAR</pre> if a list is omitted.
 
 ### NewTheater
 A single theater ID which is assigned on any processed maps.
