@@ -35,5 +35,3 @@ In addition, binaries from following open-source projects are used in MapTool:
 
 * [NLog](http://nlog-project.org)
   * https://github.com/starkku/maptool/blob/master/LICENSE_NLog.txt
-* [Nini](http://nini.sourceforge.net)
-  * https://github.com/starkku/maptool/blob/master/LICENSE_Nini.txt

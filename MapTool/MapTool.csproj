@@ -51,9 +51,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Nini">
-      <HintPath>..\References\Nini.dll</HintPath>
-    </Reference>
     <Reference Include="NLog">
       <HintPath>..\References\NLog.dll</HintPath>
     </Reference>
@@ -67,6 +64,7 @@
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="ConversionRules.cs" />
+    <Compile Include="Utility\INIFile.cs" />
     <Compile Include="MapTileContainer.cs" />
     <Compile Include="MapTool.cs" />
     <Compile Include="Program.cs" />

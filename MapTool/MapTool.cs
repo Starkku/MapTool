@@ -13,9 +13,9 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Globalization;
-using Nini.Config;
 using CNCMaps.FileFormats.Encodings;
 using CNCMaps.FileFormats.VirtualFileSystem;
+using MapTool.Utility;
 
 namespace MapTool
 {
@@ -44,11 +44,11 @@ namespace MapTool
         private int map_FullWidth;
         private int map_FullHeight;
         private string nl = Environment.NewLine;
-        private bool fixSectionOrder = false;
+        //private bool fixSectionOrder = false;
 
-        IniConfigSource mapConfig;                                                     // Map file.
-        IniConfigSource profileConfig;                                                 // Conversion profile INI file.
-        IniConfigSource theaterConfig;                                                 // Theater config INI file.
+        INIFile mapConfig;                                                             // Map file.
+        INIFile profileConfig;                                                         // Conversion profile INI file.
+        INIFile theaterConfig;                                                         // Theater config INI file.
         List<MapTileContainer> isoMapPack5 = new List<MapTileContainer>();             // Map tile data.
         byte[] overlayPack = null;                                                     // Map overlay ID data.
         byte[] overlayDataPack = null;                                                 // Map overlay frame data.
@@ -69,52 +69,39 @@ namespace MapTool
 
             if (!string.IsNullOrEmpty(fileInput) && !string.IsNullOrEmpty(fileOutput))
             {
-                try
+
+                logger.Info("Reading map file '" + infile + "'.");
+                mapConfig = new INIFile(infile);
+                if (!mapConfig.Initialized)
                 {
-                    logger.Info("Reading map file '" + infile + "'.");
-                    mapConfig = new IniConfigSource(infile);
-                    string[] size = mapConfig.Configs["Map"].GetString("Size").Split(',');
-                    map_FullWidth = int.Parse(size[2]);
-                    map_FullHeight = int.Parse(size[3]);
-                    Initialized = parseMapPack();
-                    mapTheater = mapConfig.Configs["Map"].GetString("Theater", null);
-                    if (mapTheater != null) mapTheater = mapTheater.ToUpper();
-                }
-                catch (Nini.Ini.IniException e)
-                {
-                    if (e.Message.Contains("Line"))
-                    {
-                        string exmsg = e.Message;
-                        int linenum;
-                        int posnum;
-                        int tmp1 = exmsg.IndexOf(",");
-                        linenum = Convert.ToInt32(exmsg.Substring(tmp1 - 2, 2));
-                        posnum = Convert.ToInt32(exmsg.Substring(tmp1 + 12, 2));
-                        logger.Error("Couldn't read map file due to malformed content. Offending character found on line " + linenum.ToString() + ", position " + posnum.ToString() + ".");
-                    }
-                    else logger.Error("Couldn't read map file. " + e.Message);
                     Initialized = false;
                     return;
                 }
+                string[] size = mapConfig.GetKey("Map", "Size", "").Split(',');
+                map_FullWidth = int.Parse(size[2]);
+                map_FullHeight = int.Parse(size[3]);
+                Initialized = parseMapPack();
+                mapTheater = mapConfig.GetKey("Map", "Theater", null);
+                if (mapTheater != null) mapTheater = mapTheater.ToUpper();
 
-                profileConfig = ReadINIFile(fileconfig);
-                if (profileConfig == null) Initialized = false;
+                profileConfig = new INIFile(fileconfig);
+                if (!profileConfig.Initialized) Initialized = false;
                 else
                 {
                     logger.Info("Parsing conversion profile file.");
 
-                    string IncludeFiles = profileConfig.Configs["ProfileData"].Get("IncludeFiles", null);
+                    string IncludeFiles = profileConfig.GetKey("ProfileData", "IncludeFiles", null);
                     if (!string.IsNullOrEmpty(IncludeFiles))
                     {
                         string[] inc = IncludeFiles.Split(',');
                         string basedir = Path.GetDirectoryName(fileconfig);
                         foreach (string f in inc)
                         {
-                            if (File.Exists(basedir +"\\"+ f))
+                            if (File.Exists(basedir + "\\" + f))
                             {
-                                IniConfigSource ic = ReadINIFile(basedir + "\\" + f);
-                                if (ic == null) continue;
-                                logger.Info("Merging included file '"+f+"' to conversion profile.");
+                                INIFile ic = new INIFile(basedir + "\\" + f);
+                                if (!ic.Initialized) continue;
+                                logger.Info("Merging included file '" + f + "' to conversion profile.");
                                 profileConfig.Merge(ic);
                             }
                         }
@@ -122,20 +109,16 @@ namespace MapTool
                     string[] tilerules = null;
                     string[] overlayrules = null;
                     string[] objectrules = null;
-                    string[] sectionrules = null;
-                    IConfig conf = profileConfig.Configs.GetByName("TileRules");
-                    if (conf != null) tilerules = conf.GetValues();
-                    conf = profileConfig.Configs.GetByName("OverlayRules");
-                    if (conf != null) overlayrules = conf.GetValues();
-                    conf = profileConfig.Configs.GetByName("ObjectRules");
-                    if (conf != null) objectrules = conf.GetValues();
-                    conf = profileConfig.Configs.GetByName("SectionRules");
-                    if (conf != null) sectionrules = conf.GetValues();
+                    //string[] sectionrules = null;
+                    if (profileConfig.SectionExists("TileRules")) tilerules = profileConfig.GetValues("TileRules");
+                    if (profileConfig.SectionExists("OverlayRules")) overlayrules = profileConfig.GetValues("OverlayRules");
+                    if (profileConfig.SectionExists("ObjectRules")) objectrules = profileConfig.GetValues("ObjectRules");
+                    //if (profileConfig.SectionExists("SectionRules")) sectionrules = profileConfig.GetValues("SectionRules");
                     string[] tmp = null;
+                    newTheater = profileConfig.GetKey("TheaterRules", "NewTheater", null);
                     try
                     {
-                        newTheater = profileConfig.Configs["TheaterRules"].Get("NewTheater", null);
-                        tmp = profileConfig.Configs["TheaterRules"].Get("ApplicableTheaters", null).Split(',');
+                        tmp = profileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
                     }
                     catch (Exception)
                     {
@@ -167,55 +150,14 @@ namespace MapTool
 
             else if (!string.IsNullOrEmpty(theateriniconfig))
             {
-                try
+                theaterConfig = new INIFile(theateriniconfig);
+                if (!theaterConfig.Initialized)
                 {
-                    logger.Info("Parsing theater configuration file.");
-                    theaterConfig = new IniConfigSource(theateriniconfig);
-                }
-                catch (Nini.Ini.IniException e)
-                {
-                    if (e.Message.Contains("Line"))
-                    {
-                        string exmsg = e.Message;
-                        int linenum;
-                        int posnum;
-                        int tmp1 = exmsg.IndexOf(",");
-                        linenum = Convert.ToInt32(exmsg.Substring(tmp1 - 2, 2));
-                        posnum = Convert.ToInt32(exmsg.Substring(tmp1 + 12, 2));
-                        logger.Error("Couldn't parse theater configuration file due to malformed content. Offending character found on line " + linenum.ToString() + ", position " + posnum.ToString() + ".");
-                    }
-                    else logger.Error("Couldn't parse theater configuration file. " + e.Message);
                     Initialized = false;
                     return;
                 }
             }
             Initialized = true;
-        }
-
-        private IniConfigSource ReadINIFile(string fileconfig)
-        {
-            IniConfigSource ret = null;
-            try
-            {
-                logger.Info("Reading file '" + fileconfig + "'.");
-                ret = new IniConfigSource(fileconfig);
-            }
-            catch (Nini.Ini.IniException e)
-            {
-                if (e.Message.Contains("Line"))
-                {
-                    string exmsg = e.Message;
-                    int linenum;
-                    int posnum;
-                    int tmp1 = exmsg.IndexOf(",");
-                    linenum = Convert.ToInt32(exmsg.Substring(tmp1 - 2, 2));
-                    posnum = Convert.ToInt32(exmsg.Substring(tmp1 + 12, 2));
-                    logger.Error("Couldn't read file '"+fileconfig+"' due to malformed content. Offending character found on line " + linenum.ToString() + ", position " + posnum.ToString() + ".");
-                }
-                else logger.Error("Couldn't read file '" + fileconfig + "'. " + e.Message);
-                return null;
-            }
-            return ret;
         }
 
         public void ConvertTheaterData()
@@ -229,7 +171,7 @@ namespace MapTool
             }
             if (newTheater != "" && isValidTheatreName(newTheater))
             {
-                mapConfig.Configs["Map"].Set("Theater", newTheater);
+                mapConfig.SetKey("Map", "Theater", newTheater);
                 logger.Info("Map theater declaration changed from '" + mapTheater + "' to '" + newTheater + "'.");
                 Altered = true;
             }
@@ -272,13 +214,13 @@ namespace MapTool
                         }
                         if (r.New_End == r.New_Start)
                         {
-                            logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + r.New_Start);
+                            //logger.Trace("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + r.New_Start);
                             t.TileIndex = r.New_Start;
                             break;
                         }
                         else
                         {
-                            logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + (r.New_Start + Math.Abs(l - t.TileIndex)));
+                            //logger.Trace("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + (r.New_Start + Math.Abs(l - t.TileIndex)));
                             t.TileIndex = (r.New_Start + Math.Abs(l - t.TileIndex));
                             break;
                         }
@@ -462,16 +404,14 @@ namespace MapTool
         {
             logger.Info("Parsing IsoMapPack5.");
             string data = "";
-            string[] tmp = mapConfig.Configs["IsoMapPack5"].GetValues();
-            foreach (string str in tmp)
-            {
-                data += str;
-            }
+            string[] tmp = mapConfig.GetValues("IsoMapPack5");
+            if (tmp == null || tmp.Length < 1) return false;
+            data = concatStrings(tmp);
             int cells;
             byte[] isoMapPack;
             try
             {
-                string size = mapConfig.Configs["Map"].Get("Size");
+                string size = mapConfig.GetKey("Map", "Size", "");
                 string[] st = size.Split(',');
                 map_Width = Convert.ToInt16(st[2]);
                 map_Height = Convert.ToInt16(st[3]);
@@ -516,28 +456,25 @@ namespace MapTool
         private void ApplyObjectConversionRules(string sectionname)
         {
             if (string.IsNullOrEmpty(sectionname)) return;
-            IConfig section = mapConfig.Configs[sectionname];
-            if (section == null) return;
-            string[] values = section.GetValues();
-            string[] keys = section.GetKeys();
-            for (int i = 0; i < Math.Min(values.Length, keys.Length); i++)
+            KeyValuePair<string, string>[] kvps = mapConfig.GetKeyValuePairs(sectionname);
+            if (kvps == null) return;
+            foreach (KeyValuePair<string, string> kvp in kvps)
             {
-                if (string.IsNullOrEmpty(values[i])) continue;
                 foreach (StringIDConversionRule rule in objectrules)
                 {
                     if (rule == null || rule.Original == null) continue;
-                    if (values[i].Contains(rule.Original))
+                    if (kvp.Value.Contains(rule.Original))
                     {
                         if (rule.New == null)
                         {
-                            logger.Debug("Removed " + sectionname + " object with ID '" + rule.Original + "' from the map file.");
-                            section.Remove(keys[i]);
+                            //logger.Trace("Removed " + sectionname + " object with ID '" + rule.Original + "' from the map file.");
+                            mapConfig.RemoveKey(sectionname, kvp.Key);
                             Altered = true;
                         }
                         else
                         {
-                            logger.Debug("Replaced " + sectionname + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
-                            section.Set(keys[i], values[i].Replace("," + rule.Original + ",", "," + rule.New + ","));
+                            //logger.Trace("Replaced " + sectionname + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
+                            mapConfig.SetKey(sectionname, kvp.Key, kvp.Value.Replace("," + rule.Original + ",", "," + rule.New + ","));
                             Altered = true;
                         }
                     }
@@ -547,15 +484,18 @@ namespace MapTool
 
         public void ConvertSectionData()
         {
+            /*
             if (!Initialized || overlayrules == null || sectionrules.Count < 1) return;
             else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the section data."); return; }
             logger.Info("Attempting to modify section data of the map file.");
             ApplySectionConversionRules();
             fixSectionOrder = true;
+            */
         }
 
         private void ApplySectionConversionRules()
         {
+            /*
             foreach (SectionConversionRule rule in sectionrules)
             {
                 IConfig section = mapConfig.Configs[rule.SectionID];
@@ -568,6 +508,7 @@ namespace MapTool
                     else { section.Set(kvp.Key, kvp.Value); logger.Debug("Set section '" + section.Name + "' key '" + kvp.Key + "' value to '" + kvp.Value + "'."); Altered = true; continue; }
                 }
             }
+            */
         }
 
         public void ConvertOverlayData()
@@ -595,13 +536,13 @@ namespace MapTool
                     {
                         if (rule.New_End == rule.New_Start)
                         {
-                            logger.Debug("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + rule.New_Start + "'.");
+                            //logger.Trace("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + rule.New_Start + "'.");
                             overlayPack[i] = (byte)rule.New_Start;
                             break;
                         }
                         else
                         {
-                            logger.Debug("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + (rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i])) + "'.");
+                            //logger.Trace("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + (rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i])) + "'.");
                             overlayPack[i] = (byte)(rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i]));
                             break;
                         }
@@ -614,16 +555,16 @@ namespace MapTool
         private void parseOverlayPack()
         {
             logger.Info("Parsing OverlayPack.");
-            IConfig conf = mapConfig.Configs["OverlayPack"];
-            if (conf == null) return;
-            byte[] format80Data = Convert.FromBase64String(concatenatedValuesFromSection(conf));
+            string[] vals = mapConfig.GetValues("OverlayPack");
+            if (vals == null || vals.Length < 1) return;
+            byte[] format80Data = Convert.FromBase64String(concatStrings(vals));
             var overlayPack = new byte[1 << 18];
             Format5.DecodeInto(format80Data, overlayPack, 80);
 
             logger.Info("Parsing OverlayDataPack.");
-            conf = mapConfig.Configs["OverlayDataPack"];
-            if (conf == null) return;
-            format80Data = Convert.FromBase64String(concatenatedValuesFromSection(conf));
+            vals = mapConfig.GetValues("OverlayDataPack");
+            if (vals == null || vals.Length < 1) return;
+            format80Data = Convert.FromBase64String(concatStrings(vals));
             var overlayDataPack = new byte[1 << 18];
             Format5.DecodeInto(format80Data, overlayDataPack, 80);
 
@@ -642,22 +583,24 @@ namespace MapTool
 
         private void overrideBase64MapSection(string sectionName, string data)
         {
-            mapConfig.RemoveConfig(sectionName);
-            mapConfig.AddConfig(sectionName);
+            //mapConfig.RemoveSection(sectionName);
+            //mapConfig.AddSection(sectionName);
             int lx = 70;
-            int rownum = 1;
+            //int rownum = 1;
+            List<string> lines = new List<string>();
             for (int x = 0; x < data.Length; x += lx)
             {
-                mapConfig.Configs[sectionName].Set(rownum++.ToString(CultureInfo.InvariantCulture), data.Substring(x, Math.Min(lx, data.Length - x)));
+                lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
+                //mapConfig.SetKey(sectionName, rownum++.ToString(CultureInfo.InvariantCulture), data.Substring(x, Math.Min(lx, data.Length - x)));
             }
+            mapConfig.ReplaceSectionValues(sectionName, lines);
         }
 
-        private string concatenatedValuesFromSection(IConfig section)
+        private string concatStrings(string[] Strings)
         {
-            if (section == null) return null;
+            if (Strings == null || Strings.Length < 1) return null;
             var sb = new StringBuilder();
-            string[] vals = section.GetValues();
-            foreach (string v in vals)
+            foreach (string v in Strings)
                 sb.Append(v);
             return sb.ToString();
         }
@@ -669,13 +612,14 @@ namespace MapTool
 
             TilesetCollection mtiles = TilesetCollection.ParseFromINIFile(theaterConfig);
 
-            if (mtiles == null || mtiles.Count < 1) { logger.Error("Could not parse tileset data from theater configuration file '" + theaterConfig.SavePath + "'."); return; };
+            if (mtiles == null || mtiles.Count < 1) { logger.Error("Could not parse tileset data from theater configuration file '" + theaterConfig.Filename + "'."); return; };
 
-            logger.Info("Attempting to list tileset data for a theater based on file: '" + theaterConfig.SavePath + "'.");
-
-            string print = "";
+            logger.Info("Attempting to list tileset data for a theater based on file: '" + theaterConfig.Filename + "'.");
+            List<string> lines = new List<string>();
             int tilecounter = 0;
-            print += "Theater tileset data gathered from file '" + theaterConfig.SavePath + "'." + nl + nl;
+            lines.Add("Theater tileset data gathered from file '" + theaterConfig.Filename + "'.");
+            lines.Add("");
+            lines.Add("");
             foreach (Tileset ts in mtiles)
             {
                 if (ts.TilesInSet < 1)
@@ -683,64 +627,17 @@ namespace MapTool
                     logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " skipped due to tile count of 0.");
                     continue;
                 }
-                print += ts.getPrintableData(ref tilecounter);
+                lines.AddRange(ts.getPrintableData(ref tilecounter));
+                lines.Add("");
                 logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " added to the list.");
             }
-            WriteTextFile(print, fileOutput);
+            File.WriteAllLines(fileOutput, lines.ToArray());
         }
 
-        private void WriteTextFile(string content, string filename)
-        {
-            TextWriter tw;
-            try
-            {
-                tw = new StreamWriter(filename, false);
-                logger.Info("Writing tileset data into file '" + filename + "'.");
-                tw.Write(content);
-
-            }
-            catch (Exception)
-            {
-                logger.Error("Could not write text file '" + filename + "'.");
-                return;
-            }
-            tw.Close();
-        }
 
         public void Save()
         {
-            if (!fixSectionOrder) mapConfig.Save(fileOutput);
-            else
-            {
-                IConfig digest = mapConfig.Configs["Digest"];
-                IConfig basic = mapConfig.Configs["Basic"];
-                if (digest != null) mapConfig.RemoveConfig("Digest");
-                else { mapConfig.Save(fileOutput); return; };
-                if (basic != null) mapConfig.RemoveConfig("Basic");
-                string tmp = Path.GetTempFileName();
-                mapConfig.Save(tmp);
-                IniConfigSource map_tmp = new IniConfigSource(tmp);
-                mapConfig = new IniConfigSource();
-                addHardCopySection(mapConfig.Configs, basic);
-                foreach (IConfig config in map_tmp.Configs)
-                {
-                    addHardCopySection(mapConfig.Configs, config);
-                }
-                addHardCopySection(mapConfig.Configs, digest);
-                mapConfig.Save(fileOutput);
-            }
-        }
-
-        private void addHardCopySection(ConfigCollection configCollection, IConfig section)
-        {
-            configCollection.Add(section.Name);
-            IConfig newsection = configCollection[section.Name];
-            string[] keys = section.GetKeys();
-            string[] values = section.GetValues();
-            for (int i = 0; i < Math.Min(keys.Length, values.Length); i++)
-            {
-                newsection.Set(keys[i], values[i]);
-            }
+            mapConfig.Save(fileOutput);
         }
 
         public static bool isValidTheatreName(string tname)

@@ -9,7 +9,7 @@
 
 using System;
 using System.Collections;
-using Nini.Config;
+using MapTool.Utility;
 
 namespace MapTool
 {
@@ -85,23 +85,24 @@ namespace MapTool
 
         #endregion
 
-        public static TilesetCollection ParseFromINIFile(IniConfigSource theaterconfig)
+        public static TilesetCollection ParseFromINIFile(INIFile theaterconfig)
         {
             TilesetCollection tsc = new TilesetCollection();
             Tileset ts;
             int tmp;
-            foreach (IniConfig config in theaterconfig.Configs) 
+            string[] sections = theaterconfig.GetSections();
+            foreach (string section in sections) 
             {
-                if (!config.Name.StartsWith("TileSet")) continue;
+                if (!section.StartsWith("TileSet")) continue;
                 ts = new Tileset();
-                ts.SetID = config.Name;
-                Int32.TryParse(config.Name.Substring(7, 4), out tmp);
+                ts.SetID = section;
+                Int32.TryParse(section.Substring(7, 4), out tmp);
                 ts.SetNumber = tmp;
-                ts.SetName = config.GetString("SetName", null);
-                ts.FileName = config.GetString("FileName", null).ToLower();
+                ts.SetName = theaterconfig.GetKey(section, "SetName", null);
+                ts.FileName = theaterconfig.GetKey(section, "FileName", null).ToLower();
                 try
                 {
-                    ts.TilesInSet = config.GetInt("TilesInSet", -1);
+                    ts.TilesInSet = GetInt(theaterconfig.GetKey(section, "TilesInSet", "N/A"));
                 }
                 catch (Exception)
                 {
@@ -110,6 +111,19 @@ namespace MapTool
                 tsc.Add(ts);
             }
             return tsc;
+        }
+
+        private static int GetInt(string str)
+        {
+            int i = -1;
+            try
+            {
+                i = Int32.Parse(str);
+            }
+            catch (Exception)
+            {
+            }
+            return i;
         }
     }
 
@@ -134,9 +148,14 @@ namespace MapTool
             TilesInSet = tilesinset;
         }
 
-        public string getPrintableData(ref int tilecounter)
+        public string[] getPrintableData(ref int tilecounter)
         {
-            return SetID + " | " + SetName + "\r\nFilename: " +  FileName + "\r\n" + "Number of tiles: " + TilesInSet + "\r\n" + "Range: " + tilecounter.ToString() + "-" + ((tilecounter += TilesInSet) - 1).ToString() + "\r\n\r\n";
+            string[] data = new string[4];
+            data[0] = SetID + " | " + SetName;
+            data[1] = "Filename: " +  FileName;
+            data[2] = "Number of tiles: " + TilesInSet;
+            data[3] = "Range: " + tilecounter.ToString() + "-" + ((tilecounter += TilesInSet) - 1).ToString();
+            return data;
         }
     }
 }

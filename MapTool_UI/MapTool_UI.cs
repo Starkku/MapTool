@@ -11,9 +11,9 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.IO;
-using Nini.Config;
 using System.Diagnostics;
 using System.Threading;
+using MapTool.Utility;
 
 namespace MapTool_UI
 {
@@ -71,8 +71,8 @@ namespace MapTool_UI
             {
                 try
                 {
-                    IniConfigSource profile = new IniConfigSource(s);
-                    profiles.Add(new ListBoxProfile(s, profile.Configs["ProfileData"].GetString("Name", s), profile.Configs["ProfileData"].GetString("Description", "N/A")));
+                    INIFile profile = new INIFile(s);
+                    profiles.Add(new ListBoxProfile(s, profile.GetKey("ProfileData", "Name", Path.GetFileName(s)), profile.GetKey("ProfileData", "Description", "Description Not Available")));
                 }
                 catch (Exception)
                 {
