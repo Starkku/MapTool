@@ -21,6 +21,7 @@ namespace MapTool
 {
     class MapTool
     {
+        static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
         // Tool initialized true/false.
         public bool Initialized
