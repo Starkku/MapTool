@@ -30,8 +30,3 @@ Special thanks to the following open source projects and people who have contrib
 ## License
 
 See [COPYING](https://github.com/starkku/maptool/blob/master/COPYING).
-
-In addition, binaries from following open-source projects are used in MapTool:
-
-* [NLog](http://nlog-project.org)
-  * https://github.com/starkku/maptool/blob/master/LICENSE_NLog.txt
