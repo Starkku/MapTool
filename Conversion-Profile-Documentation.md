@@ -31,6 +31,8 @@ A single theater ID which is assigned on any processed maps.
 
 A list of tile index conversion rules, each on it's own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values.
 
+To assist in figuring out the numbers to use, MapTool can be run with command line parameter *-l* with a game theater configuration INI (such as temperat(md).ini) as input file to extract a listing of tiles and their tile indices to a plaintext output file.
+
 **Example #1:**
 <pre>
 [TileRules]

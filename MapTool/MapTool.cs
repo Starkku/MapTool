@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
-using System.Globalization;
 using CNCMaps.FileFormats.Encodings;
 using CNCMaps.FileFormats.VirtualFileSystem;
 using MapTool.Utility;
@@ -59,14 +58,24 @@ namespace MapTool
         List<StringIDConversionRule> objectrules = new List<StringIDConversionRule>(); // Conversion profile object rules.
         List<SectionConversionRule> sectionrules = new List<SectionConversionRule>();  // Conversion profile section rules.
 
-        public MapTool(string infile, string outfile, string fileconfig = null, string theateriniconfig = null)
+        public MapTool(string infile, string outfile, string fileconfig = null, bool list = false)
         {
             Initialized = false;
             Altered = false;
             fileInput = infile;
             fileOutput = outfile;
 
-            if (!string.IsNullOrEmpty(fileInput) && !string.IsNullOrEmpty(fileOutput))
+            if (list && !String.IsNullOrEmpty(fileInput))
+            {
+                theaterConfig = new INIFile(fileInput);
+                if (!theaterConfig.Initialized)
+                {
+                    Initialized = false;
+                    return;
+                }
+            }
+
+            else if (!String.IsNullOrEmpty(fileInput) && !String.IsNullOrEmpty(fileOutput))
             {
 
                 Logger.Info("Reading map file '" + infile + "'.");
@@ -90,7 +99,7 @@ namespace MapTool
                     Logger.Info("Parsing conversion profile file.");
 
                     string IncludeFiles = profileConfig.GetKey("ProfileData", "IncludeFiles", null);
-                    if (!string.IsNullOrEmpty(IncludeFiles))
+                    if (!String.IsNullOrEmpty(IncludeFiles))
                     {
                         string[] inc = IncludeFiles.Split(',');
                         string basedir = Path.GetDirectoryName(fileconfig);
@@ -144,16 +153,6 @@ namespace MapTool
                     parseConfigFile(overlayrules, this.overlayrules);
                     parseConfigFile(objectrules, this.objectrules);
                     //parseConfigFile(sectionrules, this.sectionrules);
-                }
-            }
-
-            else if (!string.IsNullOrEmpty(theateriniconfig))
-            {
-                theaterConfig = new INIFile(theateriniconfig);
-                if (!theaterConfig.Initialized)
-                {
-                    Initialized = false;
-                    return;
                 }
             }
             Initialized = true;
@@ -454,7 +453,7 @@ namespace MapTool
 
         private void ApplyObjectConversionRules(string sectionname)
         {
-            if (string.IsNullOrEmpty(sectionname)) return;
+            if (String.IsNullOrEmpty(sectionname)) return;
             KeyValuePair<string, string>[] kvps = mapConfig.GetKeyValuePairs(sectionname);
             if (kvps == null) return;
             foreach (KeyValuePair<string, string> kvp in kvps)

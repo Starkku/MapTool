@@ -91,7 +91,7 @@ namespace MapTool
             Tileset ts;
             int tmp;
             string[] sections = theaterconfig.GetSections();
-            foreach (string section in sections) 
+            foreach (string section in sections)
             {
                 if (!section.StartsWith("TileSet")) continue;
                 ts = new Tileset();
@@ -99,7 +99,8 @@ namespace MapTool
                 Int32.TryParse(section.Substring(7, 4), out tmp);
                 ts.SetNumber = tmp;
                 ts.SetName = theaterconfig.GetKey(section, "SetName", null);
-                ts.FileName = theaterconfig.GetKey(section, "FileName", null).ToLower();
+                ts.FileName = theaterconfig.GetKey(section, "FileName", null);
+                if (ts.FileName != null) ts.FileName = ts.FileName.ToLower();
                 try
                 {
                     ts.TilesInSet = GetInt(theaterconfig.GetKey(section, "TilesInSet", "N/A"));
@@ -152,7 +153,7 @@ namespace MapTool
         {
             string[] data = new string[4];
             data[0] = SetID + " | " + SetName;
-            data[1] = "Filename: " +  FileName;
+            data[1] = "Filename: " + FileName;
             data[2] = "Number of tiles: " + TilesInSet;
             data[3] = "Range: " + tilecounter.ToString() + "-" + ((tilecounter += TilesInSet) - 1).ToString();
             return data;

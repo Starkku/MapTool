@@ -31,12 +31,7 @@ namespace MapTool.Utility
             get;
             set;
         }
-        public string List
-        {
-            get;
-            set;
-        }
-        public bool Convert
+        public bool List
         {
             get;
             set;

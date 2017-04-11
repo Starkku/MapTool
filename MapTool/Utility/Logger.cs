@@ -52,7 +52,7 @@ namespace MapTool.Utility
             return dateString + " | " + Timer.Elapsed.ToString();
         }
 
-        public static void Info (string log)
+        public static void Info(string log)
         {
             if (!Initialized) return;
             Console.ForegroundColor = ConsoleColor.Gray;

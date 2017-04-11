@@ -87,12 +87,12 @@ namespace MapTool.Utility
             string value = null;
             if (line.Contains("="))
             {
-                key = line.Substring(0, line.IndexOf('='));
-                value = wipeComments(line.Substring(line.IndexOf('=')+1, line.Length - line.IndexOf('=')-1));
+                key = line.Substring(0, line.IndexOf('=')).Trim();
+                value = wipeComments(line.Substring(line.IndexOf('=') + 1, line.Length - line.IndexOf('=') - 1)).Trim();
             }
             else
             {
-                value = wipeComments(line);
+                value = wipeComments(line).Trim();
             }
             INIKeyValuePair kvp = new INIKeyValuePair(key, value);
             return kvp;
@@ -123,7 +123,8 @@ namespace MapTool.Utility
             INISection sec = Sections.Find(i => i.Name == Section);
             if (sec == null) AddSection(Section);
             INIKeyValuePair kvp = sec.Lines.Find(i => i.Key == Key);
-            if (kvp == null) {
+            if (kvp == null)
+            {
                 sec.Lines.Add(new INIKeyValuePair(Key, Value));
             }
             else kvp.Value = Value;
@@ -254,7 +255,7 @@ namespace MapTool.Utility
             List<string> lines = new List<string>();
             foreach (INISection sec in Sections)
             {
-                lines.Add("["+sec.Name+"]");
+                lines.Add("[" + sec.Name + "]");
                 foreach (INIKeyValuePair kvp in sec.Lines)
                 {
                     if (kvp.Key == null) lines.Add(kvp.Value);

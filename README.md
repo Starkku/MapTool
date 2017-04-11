@@ -6,7 +6,9 @@ Project Page:
 
 * http://github.com/starkku/maptool
 
-Download:
+Downloads: 
+
+* http://projectphantom.net/utils/maptool
 
 ## Installation
 
@@ -22,7 +24,7 @@ Documentation on the contents of conversion profile INI files and how to write t
 
 ## Acknowledgements
 
-Special thanks to the following open source projects and people who have contributed to them - as their work has been pivotal in making the implementation of MapTool possible.
+MapTool uses code from the following open-source projects to make it's functionality possible.
 
 * CnCMaps Renderer by Frank Razenberg - http://github.com/zzattack/ccmaps-net
 * OpenRA by [OpenRA Authors](https://raw.github.com/OpenRA/OpenRA/master/AUTHORS) - http://github.com/OpenRA/OpenRA

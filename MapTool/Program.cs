@@ -23,15 +23,14 @@ namespace MapTool
 
         static void Main(string[] args)
         {
-            options = new OptionSet 
+            options = new OptionSet
             {
-            {"h|help", "Show help", v => settings.ShowHelp = true},
-            {"i|infile=", "Input file.", v => settings.FileInput = v},
-            {"o|outfile=", "Output file.", v => settings.FileOutput = v},
-            {"p|profilefile=", "Conversion profile file.", v => settings.FileConfig = v},
-            {"l|list=", "List theater data based on this theater config file.", v => settings.List = v},
-            {"c|convert", "Convert map tiles/overlay according to a profile file.", v => settings.Convert = true},
-            {"d|debug-logging", "If set, writes a log to a file in program directory.", v => settings.DebugLogging = true}
+                { "h|help", "Show help", v => settings.ShowHelp = true},
+                { "i|infile=", "Input file.", v => settings.FileInput = v},
+                { "o|outfile=", "Output file.", v => settings.FileOutput = v},
+                { "l|list", "List theater data based on input theater config file.", v => settings.List = true},
+                { "p|profilefile=", "Conversion profile file. This also enables the conversion logic.", v => settings.FileConfig = v},
+                { "d|debug-logging", "If set, writes a log to a file in program directory.", v => settings.DebugLogging = true}
             };
             try
             {
@@ -39,7 +38,10 @@ namespace MapTool
             }
             catch (Exception e)
             {
+                ConsoleColor defcolor = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Encountered an error while parsing command-line parameters. Message: " + e.Message);
+                Console.ForegroundColor = defcolor;
                 ShowHelp();
                 return;
             }
@@ -52,13 +54,27 @@ namespace MapTool
                 ShowHelp();
                 return;
             }
-            if (string.IsNullOrEmpty(settings.FileInput) && string.IsNullOrEmpty(settings.List))
+            if (String.IsNullOrEmpty(settings.FileConfig) && !settings.List)
+            {
+                Logger.Error("Not enough parameters. Must provide either -l or -p.");
+                ShowHelp();
+                return;
+            }
+            else if (settings.List)
+            {
+                Logger.Info("Mode set (-l): List Tile Data.");
+            }
+            else
+            {
+                Logger.Info("Mode set (-p): Apply Conversion Profile.");
+            }
+            if (String.IsNullOrEmpty(settings.FileInput))
             {
                 Logger.Error("No valid input file specified.");
                 ShowHelp();
                 error = true;
             }
-            else if (!string.IsNullOrEmpty(settings.FileInput) && !File.Exists(settings.FileInput))
+            else if (!String.IsNullOrEmpty(settings.FileInput) && !File.Exists(settings.FileInput))
             {
                 Logger.Error("Specified input file does not exist.");
                 ShowHelp();
@@ -66,19 +82,12 @@ namespace MapTool
             }
             if (error) return;
             else Logger.Info("Input file path OK.");
-
-            if ((settings.FileOutput == null || !Directory.Exists(Path.GetDirectoryName(settings.FileOutput))) && string.IsNullOrEmpty(settings.List))
+            if (settings.List)
             {
-                Logger.Error("Specified output directory does not exist.");
-                ShowHelp();
-                return;
-            }
-            else if (!string.IsNullOrEmpty(settings.List))
-            {
-                if (string.IsNullOrEmpty(settings.FileOutput))
+                if (String.IsNullOrEmpty(settings.FileOutput))
                 {
                     Logger.Warn("No output file available. Using input as output.");
-                    settings.FileOutput = Path.ChangeExtension(settings.List, ".txt");
+                    settings.FileOutput = Path.ChangeExtension(settings.FileInput, ".txt");
                 }
             }
             else Logger.Info("Output file path OK.");
@@ -91,33 +100,20 @@ namespace MapTool
                 return;
             }
 
-            if (!string.IsNullOrEmpty(settings.List) && File.Exists(settings.List))
+            if (settings.List)
             {
                 map.ListTileSetData();
                 return;
             }
-
-            if (settings.Convert)
+            else
             {
-                if (settings.FileConfig == null || settings.FileConfig == "")
-                {
-                    Logger.Error("Configuration file required for tile data conversion does not exist.");
-                    ShowHelp();
-                    error = true;
-                }
-                else if (!File.Exists(settings.FileConfig))
-                {
-                    Logger.Error("Specified configuration file does not exist.");
-                    ShowHelp();
-                    error = true;
-                }
-                if (error) return;
                 map.ConvertTheaterData();
                 map.ConvertTileData();
                 map.ConvertOverlayData();
                 map.ConvertObjectData();
                 //map.ConvertSectionData();
             }
+
             if (map.Altered)
             {
                 Logger.Info("Saving the modified map as '" + settings.FileOutput + "'.");
@@ -127,8 +123,8 @@ namespace MapTool
 
         private static void initLogger(bool writefile = false)
         {
-            string filename = AppDomain.CurrentDomain.BaseDirectory + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) +".log";
-            bool enabledebug = false; 
+            string filename = AppDomain.CurrentDomain.BaseDirectory + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) + ".log";
+            bool enabledebug = false;
 #if DEBUG
             enabledebug = true;
 #endif

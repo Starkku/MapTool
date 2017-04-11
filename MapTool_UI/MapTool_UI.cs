@@ -85,6 +85,7 @@ namespace MapTool_UI
                     continue;
                 }
             }
+            profiles.Sort();
         }
 
         // Check if the filename is already on the list.
@@ -198,7 +199,7 @@ namespace MapTool_UI
         {
             string outputfilename = Path.GetDirectoryName(filename) + "\\" + Path.GetFileNameWithoutExtension(filename) + "_altered" + Path.GetExtension(filename);
             if (cbOverwrite.Checked) outputfilename = filename;
-            string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + selectedprofile.FileName + "\" -c";
+            string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + selectedprofile.FileName + "\"";
             ThreadPool.QueueUserWorkItem(delegate (object state)
             {
                 try
@@ -331,7 +332,7 @@ namespace MapTool_UI
         }
     }
 
-    class ListBoxProfile
+    class ListBoxProfile : IComparable<ListBoxProfile>
     {
         public string FileName { get; set; }
         public string Name { get; set; }
@@ -347,6 +348,11 @@ namespace MapTool_UI
         public override string ToString()
         {
             return Name;
+        }
+
+        public int CompareTo(ListBoxProfile other)
+        {
+            return Name.CompareTo(other.Name);
         }
     }
 }

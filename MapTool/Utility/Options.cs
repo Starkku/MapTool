@@ -1046,7 +1046,7 @@ namespace NDesk.Options {
 		private static List<string> GetLines (string description)
 		{
 			List<string> lines = new List<string> ();
-			if (string.IsNullOrEmpty (description)) {
+			if (String.IsNullOrEmpty (description)) {
 				lines.Add (string.Empty);
 				return lines;
 			}
