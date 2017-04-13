@@ -142,7 +142,7 @@ namespace MapTool
                     if (applicableTheaters.Count < 1)
                         applicableTheaters.AddRange(new string[] { "TEMPERATE", "SNOW", "URBAN", "DESERT", "LUNAR", "NEWURBAN" });
 
-                    if (tilerules == null && overlayrules == null && newTheater == null)
+                    if (tilerules == null && overlayrules == null && newTheater == null && objectrules == null)
                     {
                         Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
@@ -449,6 +449,7 @@ namespace MapTool
             ApplyObjectConversionRules("Units");
             ApplyObjectConversionRules("Infantry");
             ApplyObjectConversionRules("Structures");
+            ApplyObjectConversionRules("Terrain");
         }
 
         private void ApplyObjectConversionRules(string sectionname)
@@ -472,7 +473,7 @@ namespace MapTool
                         else
                         {
                             Logger.Debug("Replaced " + sectionname + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
-                            mapConfig.SetKey(sectionname, kvp.Key, kvp.Value.Replace("," + rule.Original + ",", "," + rule.New + ","));
+                            mapConfig.SetKey(sectionname, kvp.Key, kvp.Value.Replace(rule.Original, rule.New));
                             Altered = true;
                         }
                     }

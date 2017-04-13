@@ -62,8 +62,8 @@ namespace MapTool
         {
             if (Original_Start > 254) return false;
             else if (Original_End > 254) return false;
-            else if (New_Start > 254) return false;
-            else if (New_End > 254) return false;
+            else if (New_Start > 255) return false;
+            else if (New_End > 255) return false;
             return true;
         }
     }
