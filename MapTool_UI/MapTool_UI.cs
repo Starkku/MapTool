@@ -78,6 +78,7 @@ namespace MapTool_UI
                 try
                 {
                     INIFile profile = new INIFile(s);
+                    if (!profile.SectionExists("ProfileData")) continue;
                     profiles.Add(new ListBoxProfile(s, profile.GetKey("ProfileData", "Name", Path.GetFileName(s)), profile.GetKey("ProfileData", "Description", "Description Not Available")));
                 }
                 catch (Exception)
