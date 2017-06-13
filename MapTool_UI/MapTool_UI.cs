@@ -13,7 +13,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
 using System.Threading;
-using MapTool.Utility;
+using StarkkuUtils.FileTypes;
 
 namespace MapTool_UI
 {

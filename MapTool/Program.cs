@@ -12,6 +12,7 @@ using System.IO;
 using NDesk.Options;
 using MapTool.Utility;
 using System.Reflection;
+using StarkkuUtils.Tools;
 
 namespace MapTool
 {

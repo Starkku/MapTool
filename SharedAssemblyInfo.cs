@@ -1,6 +1,6 @@
 using System.Reflection;
 [assembly: AssemblyCompany("")]  
-[assembly: AssemblyCopyright("Copyright (C) Starkku 2017")]  
+[assembly: AssemblyCopyright("Copyright © Starkku 2017")]  
 [assembly: AssemblyTrademark("")]  
 [assembly: AssemblyCulture("")]  
 [assembly: AssemblyVersion("1.0.2.0")]  

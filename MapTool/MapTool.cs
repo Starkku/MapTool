@@ -14,7 +14,8 @@ using System.Text;
 using System.IO;
 using CNCMaps.FileFormats.Encodings;
 using CNCMaps.FileFormats.VirtualFileSystem;
-using MapTool.Utility;
+using StarkkuUtils.Tools;
+using StarkkuUtils.FileTypes;
 
 namespace MapTool
 {

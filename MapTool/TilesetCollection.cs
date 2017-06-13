@@ -9,7 +9,8 @@
 
 using System;
 using System.Collections;
-using MapTool.Utility;
+using StarkkuUtils.Tools;
+using StarkkuUtils.FileTypes;
 
 namespace MapTool
 {
