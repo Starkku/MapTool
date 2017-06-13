@@ -43,21 +43,20 @@ namespace MapTool
         private int map_FullWidth;
         private int map_FullHeight;
         private string nl = Environment.NewLine;
-        //private bool fixSectionOrder = false;
 
-        INIFile mapConfig;                                                             // Map file.
-        INIFile profileConfig;                                                         // Conversion profile INI file.
-        INIFile theaterConfig;                                                         // Theater config INI file.
-        List<MapTileContainer> isoMapPack5 = new List<MapTileContainer>();             // Map tile data.
-        byte[] overlayPack = null;                                                     // Map overlay ID data.
-        byte[] overlayDataPack = null;                                                 // Map overlay frame data.
-        string mapTheater = null;                                                      // Map theater data.
-        List<string> applicableTheaters = new List<string>();                          // Conversion profile applicable theaters.
-        string newTheater = null;                                                      // Conversion profile new theater.
-        List<ByteIDConversionRule> tilerules = new List<ByteIDConversionRule>();       // Conversion profile tile rules.
-        List<ByteIDConversionRule> overlayrules = new List<ByteIDConversionRule>();    // Conversion profile overlay rules.
-        List<StringIDConversionRule> objectrules = new List<StringIDConversionRule>(); // Conversion profile object rules.
-        List<SectionConversionRule> sectionrules = new List<SectionConversionRule>();  // Conversion profile section rules.
+        INIFile mapConfig;                                                                // Map file.
+        INIFile profileConfig;                                                            // Conversion profile INI file.
+        INIFile theaterConfig;                                                            // Theater config INI file.
+        List<MapTileContainer> isoMapPack5 = new List<MapTileContainer>();                // Map tile data.
+        byte[] overlayPack = null;                                                        // Map overlay ID data.
+        byte[] overlayDataPack = null;                                                    // Map overlay frame data.
+        string mapTheater = null;                                                         // Map theater data.
+        List<string> applicableTheaters = new List<string>();                             // Conversion profile applicable theaters.
+        string newTheater = null;                                                         // Conversion profile new theater.
+        List<ByteIDConversionRule> tilerules = new List<ByteIDConversionRule>();          // Conversion profile tile rules.
+        List<ByteIDConversionRule> overlayrules = new List<ByteIDConversionRule>();       // Conversion profile overlay rules.
+        List<StringIDConversionRule> objectrules = new List<StringIDConversionRule>();    // Conversion profile object rules.
+        List<SectionConversionRule> sectionrules = new List<SectionConversionRule>();     // Conversion profile section rules.
 
         public MapTool(string infile, string outfile, string fileconfig = null, bool list = false)
         {
@@ -118,11 +117,13 @@ namespace MapTool
                     string[] tilerules = null;
                     string[] overlayrules = null;
                     string[] objectrules = null;
-                    //string[] sectionrules = null;
+                    string[] sectionrules = null;
+
                     if (profileConfig.SectionExists("TileRules")) tilerules = profileConfig.GetValues("TileRules");
                     if (profileConfig.SectionExists("OverlayRules")) overlayrules = profileConfig.GetValues("OverlayRules");
                     if (profileConfig.SectionExists("ObjectRules")) objectrules = profileConfig.GetValues("ObjectRules");
-                    //if (profileConfig.SectionExists("SectionRules")) sectionrules = profileConfig.GetValues("SectionRules");
+                    if (profileConfig.SectionExists("SectionRules")) sectionrules = mergeKVP(profileConfig.GetKeyValuePairs("SectionRules"));
+
                     string[] tmp = null;
                     newTheater = profileConfig.GetKey("TheaterRules", "NewTheater", null);
                     try
@@ -143,7 +144,7 @@ namespace MapTool
                     if (applicableTheaters.Count < 1)
                         applicableTheaters.AddRange(new string[] { "TEMPERATE", "SNOW", "URBAN", "DESERT", "LUNAR", "NEWURBAN" });
 
-                    if (tilerules == null && overlayrules == null && newTheater == null && objectrules == null)
+                    if (tilerules == null && overlayrules == null && newTheater == null && objectrules == null && sectionrules == null)
                     {
                         Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
@@ -153,7 +154,7 @@ namespace MapTool
                     parseConfigFile(tilerules, this.tilerules);
                     parseConfigFile(overlayrules, this.overlayrules);
                     parseConfigFile(objectrules, this.objectrules);
-                    //parseConfigFile(sectionrules, this.sectionrules);
+                    parseConfigFile(sectionrules, this.sectionrules);
                 }
             }
             Initialized = true;
@@ -365,37 +366,36 @@ namespace MapTool
             current_rules.Clear();
             foreach (string str in new_rules)
             {
-                string nid = null;
-                int type = 0;
-                string[] st = str.Split('|');
-                if (st == null || st.Length < 1) continue;
-                string id = st[0];
-                if (id.StartsWith("+")) { type = 1; id = id.Substring(1, id.Length - 1); }
-                else if (id.StartsWith("-")) { type = 2; id = id.Substring(1, id.Length - 1); }
-                else if (id.StartsWith("*"))
+                if (str == null || str.Length < 1) continue;
+                string[] vals = str.Split('|');
+                string original_section = "";
+                string new_section = "";
+                string original_key = "";
+                string new_key = "";
+                string new_value = "";
+                if (vals.Length > 0)
                 {
-                    string[] ids = id.Split(',');
-                    if (ids.Length > 1)
+                    string[] sec = vals[0].Split('=');
+                    if (sec == null || sec.Length < 1) continue;
+                    original_section = sec[0];
+                    if (sec.Length == 1 && vals[0].Contains('=') || sec.Length > 1 && vals[0].Contains('=') && String.IsNullOrEmpty(sec[1])) new_section = null;
+                    else if (sec.Length > 1) new_section = sec[1];
+                    if (vals.Length > 1)
                     {
-                        id = ids[0].Replace("*", "");
-                        nid = ids[1];
+                        string[] key = vals[1].Split('=');
+                        if (key != null && key.Length > 0)
+                        {
+                            original_key = key[0];
+                            if (key.Length == 1 && vals[1].Contains('=') || key.Length > 1 && vals[1].Contains('=') && String.IsNullOrEmpty(key[1])) new_key = null;
+                            else if (key.Length > 1) new_key = key[1];
+                        }
+                        if (vals.Length > 2)
+                        {
+                            if (!(vals[2] == null || vals[2] == "" || vals[2] == "*")) new_value = vals[2]; 
+                        }
                     }
-                    else id = id.Replace("*", "");
+                    current_rules.Add(new SectionConversionRule(original_section, new_section, original_key, new_key, new_value));
                 }
-                List<SectionKVP> kvplist = new List<SectionKVP>();
-                for (int i = 1; i < st.Length; i++)
-                {
-                    string[] kvp = st[i].Split('=');
-                    int kvptype = 0;
-                    if (kvp.Length < 1) continue;
-                    string key = kvp[0];
-                    string value = null;
-                    if (kvp.Length == 2) value = kvp[1];
-                    if (key.StartsWith("+")) { kvptype = 1; key = key.Substring(1, key.Length - 1); }
-                    else if (key.StartsWith("-")) { kvptype = 2; key = key.Substring(1, key.Length - 1); }
-                    kvplist.Add(new SectionKVP(key, value, (SectionRuleType)kvptype));
-                }
-                current_rules.Add(new SectionConversionRule(id, nid, kvplist, (SectionRuleType)type));
             }
         }
 
@@ -484,31 +484,52 @@ namespace MapTool
 
         public void ConvertSectionData()
         {
-            /*
-            if (!Initialized || overlayrules == null || sectionrules.Count < 1) return;
+            if (!Initialized || sectionrules == null || sectionrules.Count < 1) return;
             else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the section data."); return; }
             Logger.Info("Attempting to modify section data of the map file.");
             ApplySectionConversionRules();
-            fixSectionOrder = true;
-            */
         }
 
         private void ApplySectionConversionRules()
         {
-            /*
             foreach (SectionConversionRule rule in sectionrules)
             {
-                IConfig section = mapConfig.Configs[rule.SectionID];
-                if (section != null && rule.Type == SectionRuleType.Remove) { Logger.Debug("Removed section '" + section.Name + "'."); mapConfig.Configs.Remove(section); Altered = true; continue; }
-                else if (section != null && rule.Type == SectionRuleType.Add) { Logger.Debug("Added section '" + rule.SectionID + "'."); mapConfig.Configs.Add(rule.SectionID); Altered = true; section = mapConfig.Configs[rule.SectionID]; }
-                else if (section == null) continue;
-                foreach (SectionKVP kvp in rule.KVPList)
+                if (String.IsNullOrEmpty(rule.Original_Section)) continue;
+
+                string currentSection = rule.Original_Section;
+                if (rule.New_Section == null)
                 {
-                    if (kvp.Type == SectionRuleType.Remove) { Logger.Debug("Removed key '" + kvp.Key + "' from section '" + section.Name + "."); section.Remove(kvp.Key); Altered = true; continue; }
-                    else { section.Set(kvp.Key, kvp.Value); Logger.Debug("Set section '" + section.Name + "' key '" + kvp.Key + "' value to '" + kvp.Value + "'."); Altered = true; continue; }
+                    mapConfig.RemoveSection(rule.Original_Section);
+                    Altered = true;
+                    continue;
+                }
+                else if (rule.New_Section != "")
+                {
+                    mapConfig.RenameSection(rule.Original_Section, rule.New_Section);
+                    Altered = true;
+                    currentSection = rule.New_Section;
+                }
+
+                string currentKey = rule.Original_Key;
+                if (rule.New_Key == null)
+                {
+                    mapConfig.RemoveKey(currentSection, rule.Original_Key);
+                    Altered = true;
+                    continue;
+                }
+                else if (rule.New_Key != "")
+                {
+                    mapConfig.RenameKey(currentSection, rule.Original_Key, rule.New_Key);
+                    Altered = true;
+                    currentKey = rule.New_Key;
+                }
+
+                if (rule.New_Value != "")
+                {
+                    mapConfig.SetKey(currentSection, currentKey, rule.New_Value);
+                    Altered = true;
                 }
             }
-            */
         }
 
         public void ConvertOverlayData()
@@ -638,6 +659,16 @@ namespace MapTool
         public void Save()
         {
             mapConfig.Save(fileOutput);
+        }
+
+        private string[] mergeKVP(KeyValuePair<string, string>[] keyValuePair)
+        {
+            string[] result = new string[keyValuePair.Length];
+            for (int i = 0; i < keyValuePair.Length; i++)
+            {
+                result[i] = keyValuePair[i].Key + "=" + keyValuePair[i].Value;
+            }
+            return result;
         }
 
         public static bool isValidTheatreName(string tname)

@@ -91,59 +91,38 @@ namespace MapTool
 
     public class SectionConversionRule
     {
-        public string SectionID
+        public string Original_Section
         {
             get;
             private set;
         }
-        public string NewSectionID
+        public string New_Section
         {
             get;
             private set;
         }
-        public SectionRuleType Type
+        public string Original_Key
         {
             get;
             private set;
         }
-        public List<SectionKVP> KVPList
+        public string New_Key
         {
             get;
             private set;
         }
-
-        public SectionConversionRule(string sectionid, string newsectionid, List<SectionKVP> kvplist, SectionRuleType type = SectionRuleType.Replace)
-        {
-            SectionID = sectionid;
-            NewSectionID = newsectionid;
-            KVPList = kvplist;
-            Type = type;
-        }
-    }
-
-    public class SectionKVP
-    {
-        public SectionRuleType Type
+        public string New_Value
         {
             get;
             private set;
         }
-        public string Key
+        public SectionConversionRule(string original_section, string new_section, string original_key, string new_key, string new_value)
         {
-            get;
-            private set;
+            Original_Section = original_section;
+            New_Section = new_section;
+            Original_Key = original_key;
+            New_Key = new_key;
+            New_Value = new_value;
         }
-        public string Value
-        {
-            get;
-            private set;
-        }
-        public SectionKVP(string key, string value, SectionRuleType type = SectionRuleType.Replace)
-        {
-            Key = key;
-            Value = value;
-            Type = type;
-        }
-
     }
 }
