@@ -18,6 +18,12 @@ Description displayed in the GUI for this profile.
 #### IncludeFiles
 A comma-separated list of filenames including file extensions to read from *same directory as the current conversion profile*. Contents of these files will be merged with the current one. This only works on one level, so trying to include files from already included files will fail.
 
+#### ApplyMapOptimization
+If set to yes/true, will ensure that on the saved map, section with name 'Basic' will be the first section and section with name 'Digest' will be the last. This potentially allows for game to find these particular sections marginally faster.
+
+#### ApplyMapCompress
+If set to yes/true, no unnecessary white space is put on the saved map. This allows for map size to be marginally smaller.
+
 ### TheaterRules
 
 #### ApplicableTheaters
@@ -104,3 +110,46 @@ GACNST|YACNST
 Will convert any objects, be it Infantry, Building, Aircraft or Vehicle, with ID GACNST on the processed maps to an object of same type with ID YACNST.
 
 
+### SectionRules
+
+A list of section name, keys and values conversion rules, each on it's own line with | as a separator between section name, key and value information.
+
+** Example #1:**
+<pre>
+[SectionRules]
+Basic|Official|no
+</pre>
+
+Sets the value for key 'Official' under section 'Basic' to 'no'.
+
+** Example #2:**
+<pre>
+[SectionRules]
+Basic|Official=
+</pre>
+
+Removes key 'Official' under section 'Basic'.
+
+** Example #3:**
+<pre>
+[SectionRules]
+Basic=
+</pre>
+
+Removes section 'Basic' altogether.
+
+** Example #4:**
+<pre>
+[SectionRules]
+Basic=NotSoBasic|Official=Unofficial|Yes
+</pre>
+
+Changes name of section 'Basic' to 'NotSoBasic', name of key 'Official' under said section to 'Unofficial' and it's value to 'Yes'.
+
+** Example #5:**
+<pre>
+[SectionRules]
+Basic|Official|$GETVAL(SpecialFlags,DestroyableBridges)
+</pre>
+
+Sets the value of key 'Official' under section 'Basic' to the value of key 'DestroyableBridges' under section 'SpecialFlags'.
