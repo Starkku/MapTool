@@ -16,7 +16,7 @@ using CNCMaps.FileFormats.Encodings;
 using CNCMaps.FileFormats.VirtualFileSystem;
 using StarkkuUtils.Tools;
 using StarkkuUtils.FileTypes;
-
+using System.Text.RegularExpressions;
 namespace MapTool
 {
     class MapTool
@@ -42,6 +42,7 @@ namespace MapTool
         private int map_Height;
         private int map_FullWidth;
         private int map_FullHeight;
+
         private string nl = Environment.NewLine;
 
         INIFile mapConfig;                                                                // Map file.
@@ -57,6 +58,8 @@ namespace MapTool
         List<ByteIDConversionRule> overlayrules = new List<ByteIDConversionRule>();       // Conversion profile overlay rules.
         List<StringIDConversionRule> objectrules = new List<StringIDConversionRule>();    // Conversion profile object rules.
         List<SectionConversionRule> sectionrules = new List<SectionConversionRule>();     // Conversion profile section rules.
+        private bool UseMapOptimize = false;
+        private bool UseMapCompress = false;
 
         public MapTool(string infile, string outfile, string fileconfig = null, bool list = false)
         {
@@ -114,6 +117,10 @@ namespace MapTool
                             }
                         }
                     }
+
+                    UseMapOptimize = ParseBool(profileConfig.GetKey("ProfileData", "ApplyMapOptimization", "false").Trim(), false);
+                    UseMapCompress = ParseBool(profileConfig.GetKey("ProfileData", "ApplyMapCompress", "false").Trim(), false);
+
                     string[] tilerules = null;
                     string[] overlayrules = null;
                     string[] objectrules = null;
@@ -336,18 +343,6 @@ namespace MapTool
             }
         }
 
-        private int ParseInt(string s, int defval)
-        {
-            try
-            {
-                return Int32.Parse(s);
-            }
-            catch (Exception)
-            {
-                return defval;
-            }
-        }
-
         private void parseConfigFile(string[] new_rules, List<StringIDConversionRule> current_rules)
         {
             if (new_rules == null || new_rules.Length < 1 || current_rules == null) return;
@@ -375,6 +370,7 @@ namespace MapTool
                 string new_value = "";
                 if (vals.Length > 0)
                 {
+                    if (vals[0].StartsWith("=")) vals[0] = vals[0].Substring(1, vals[0].Length-1);
                     string[] sec = vals[0].Split('=');
                     if (sec == null || sec.Length < 1) continue;
                     original_section = sec[0];
@@ -391,7 +387,19 @@ namespace MapTool
                         }
                         if (vals.Length > 2)
                         {
-                            if (!(vals[2] == null || vals[2] == "" || vals[2] == "*")) new_value = vals[2]; 
+                            if (!(vals[2] == null || vals[2] == "" || vals[2] == "*"))
+                            {
+                                if (vals[2].StartsWith("$GETVAL") && vals[2].Contains('(') && vals[2].Contains(')'))
+                                {
+                                    string[] valdata = Regex.Match(vals[2], @"\(([^)]*)\)").Groups[1].Value.Split(',');
+                                    if (valdata.Length > 1)
+                                    {
+                                        string newval = mapConfig.GetKey(valdata[0], valdata[1], null);
+                                        if (newval != null) new_value = newval;
+                                    }
+                                }
+                                else new_value = vals[2];
+                            } 
                         }
                     }
                     current_rules.Add(new SectionConversionRule(original_section, new_section, original_key, new_key, new_value));
@@ -505,7 +513,8 @@ namespace MapTool
                 }
                 else if (rule.New_Section != "")
                 {
-                    mapConfig.RenameSection(rule.Original_Section, rule.New_Section);
+                    if (!mapConfig.SectionExists(rule.Original_Section)) mapConfig.AddSection(rule.New_Section);
+                    else mapConfig.RenameSection(rule.Original_Section, rule.New_Section);
                     Altered = true;
                     currentSection = rule.New_Section;
                 }
@@ -519,7 +528,8 @@ namespace MapTool
                 }
                 else if (rule.New_Key != "")
                 {
-                    mapConfig.RenameKey(currentSection, rule.Original_Key, rule.New_Key);
+                    if (mapConfig.GetKey(currentSection, rule.Original_Key, null) == null) mapConfig.SetKey(currentSection, rule.New_Key, "");
+                    else mapConfig.RenameKey(currentSection, rule.Original_Key, rule.New_Key);
                     Altered = true;
                     currentKey = rule.New_Key;
                 }
@@ -658,7 +668,11 @@ namespace MapTool
 
         public void Save()
         {
-            mapConfig.Save(fileOutput);
+            if (UseMapOptimize)
+            {
+                mapConfig.SetFirstAndLastSection("Basic", "Digest");
+            }
+            mapConfig.Save(fileOutput, !UseMapCompress);
         }
 
         private string[] mergeKVP(KeyValuePair<string, string>[] keyValuePair)
@@ -675,6 +689,24 @@ namespace MapTool
         {
             if (tname == "TEMPERATE" || tname == "SNOW" || tname == "LUNAR" || tname == "DESERT" || tname == "URBAN" || tname == "NEWURBAN") return true;
             return false;
+        }
+        public static bool ParseBool(string s, bool defval)
+        {
+            if (s.Equals("yes", StringComparison.InvariantCultureIgnoreCase) || s.Equals("true", StringComparison.InvariantCultureIgnoreCase)) return true;
+            else if (s.Equals("no", StringComparison.InvariantCultureIgnoreCase) || s.Equals("false", StringComparison.InvariantCultureIgnoreCase)) return false;
+            else return defval;
+        }
+
+        public static int ParseInt(string s, int defval)
+        {
+            try
+            {
+                return Int32.Parse(s);
+            }
+            catch (Exception)
+            {
+                return defval;
+            }
         }
 
         public static short shortFromBytes(byte b1, byte b2)

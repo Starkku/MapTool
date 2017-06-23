@@ -51,7 +51,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="StarkkuUtils">
+    <Reference Include="StarkkuUtils, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\References\StarkkuUtils.dll</HintPath>
     </Reference>
     <Reference Include="System" />
