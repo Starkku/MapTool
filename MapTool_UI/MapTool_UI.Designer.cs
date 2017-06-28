@@ -37,6 +37,7 @@ namespace MapTool_UI
         /// </summary>
         private void InitializeComponent()
         {
+            this.Icon = Properties.Resources.Icon;
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MapTool_UI));
             this.labelInfo = new System.Windows.Forms.Label();
