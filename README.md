@@ -19,6 +19,7 @@ As of current, MapTool only runs on Windows operating systems, with Microsoft .N
 Using the graphical user interface (MapTool_UI.exe) should be fairly straightforward. If the program was installed correctly, available conversion profiles (conversion profiles are loaded from subdirectory called 'Profiles' in the program directory) should be displayed in a list for user to choose from, with a description for each of the profiles displayed next to the list if available. Maps can be added to the list of files to process by using Browse button or drag & drop on the file list itself.
 
 Instructions for the command line tool (MapTool.exe) can be found by running the program with argument -h (f.ex `MapTool.exe -h`).
+MapTool_UI.exe can also be ran with the argument -log, which enables writing of full debug log file (which can get fairly large), and is passed to MapTool.exe.
 
 Documentation on the contents of conversion profile INI files and how to write them can be found [here](https://github.com/starkku/maptool/blob/master/Conversion-Profile-Documentation.md).
 

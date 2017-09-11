@@ -31,7 +31,7 @@ namespace MapTool
                 { "o|outfile=", "Output file.", v => settings.FileOutput = v},
                 { "l|list", "List theater data based on input theater config file.", v => settings.List = true},
                 { "p|profilefile=", "Conversion profile file. This also enables the conversion logic.", v => settings.FileConfig = v},
-                { "d|debug-logging", "If set, writes a log to a file in program directory.", v => settings.DebugLogging = true}
+                { "log|debug-logging", "If set, writes a log to a file in program directory.", v => settings.DebugLogging = true}
             };
             try
             {
@@ -47,6 +47,8 @@ namespace MapTool
                 return;
             }
             initLogger(settings.DebugLogging);
+
+            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
             bool error = false;
 
@@ -120,6 +122,13 @@ namespace MapTool
                 Logger.Info("Saving the modified map as '" + settings.FileOutput + "'.");
                 map.Save();
             }
+        }
+
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Logger.Error("Error encountered. Message: " + (e.ExceptionObject as Exception).Message);
+            Logger.Debug((e.ExceptionObject as Exception).StackTrace);
+            Environment.Exit(1);
         }
 
         private static void initLogger(bool writefile = false)

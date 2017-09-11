@@ -471,7 +471,7 @@ namespace MapTool
                 foreach (StringIDConversionRule rule in objectrules)
                 {
                     if (rule == null || rule.Original == null) continue;
-                    if (kvp.Value.Contains(rule.Original))
+                    if (MatchesRule(kvp.Value, rule.Original))
                     {
                         if (rule.New == null)
                         {
@@ -488,6 +488,14 @@ namespace MapTool
                     }
                 }
             }
+        }
+
+        private bool MatchesRule(string value, string id)
+        {
+            string[] sp = value.Split(',');
+            if (sp.Length < 2) return false;
+            if (sp[1].Equals(id)) return true;
+            return false;
         }
 
         public void ConvertSectionData()

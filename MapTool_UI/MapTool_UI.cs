@@ -27,8 +27,11 @@ namespace MapTool_UI
         private List<ListBoxProfile> profiles = new List<ListBoxProfile>();
         private ListBoxProfile selectedprofile = null;
 
-        public MapTool_UI()
+        private bool EnableWriteDebugLog = false;
+
+        public MapTool_UI(string[] args)
         {
+            parseArguments(args);
             checkExe();
             loadProfiles();
             InitializeComponent();
@@ -45,6 +48,21 @@ namespace MapTool_UI
                 ext2 += delim2 + "*" + ValidMapExts[i];
             }
             openFileDialog.Filter = "Map files (" + ext1 + ")|" + ext2;
+        }
+
+        private void parseArguments(string[] args)
+        {
+            foreach (string arg in args)
+            {
+                switch (arg.ToLower())
+                {
+                    case "-log":
+                        EnableWriteDebugLog = true;
+                        continue;
+                    default:
+                        continue;
+                }
+            }
         }
 
         private void checkExe()
@@ -200,7 +218,9 @@ namespace MapTool_UI
         {
             string outputfilename = Path.GetDirectoryName(filename) + "\\" + Path.GetFileNameWithoutExtension(filename) + "_altered" + Path.GetExtension(filename);
             if (cbOverwrite.Checked) outputfilename = filename;
-            string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + selectedprofile.FileName + "\"";
+            string extra = "";
+            if (EnableWriteDebugLog) extra += " -log";
+            string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + selectedprofile.FileName + "\"" + extra;
             ThreadPool.QueueUserWorkItem(delegate (object state)
             {
                 try
@@ -224,8 +244,9 @@ namespace MapTool_UI
                         appendToLog("Processing on map '" + filename + "' failed.");
                     toggleControlState(true);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
+                    appendToLog("Error encountered. Message: " + e.Message);
                 }
             });
         }
