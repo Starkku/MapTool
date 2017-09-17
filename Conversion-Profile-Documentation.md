@@ -101,20 +101,27 @@ Values from 0 to 254 are available for regular use. Using 255 as destination ID 
 
 A list of object ID conversion rules, each on it's own line with a | as a separator between source and destination value.
 
-**Example:**
+**Example #1:**
 <pre>
 [ObjectRules]
 GACNST|YACNST
 </pre>
 
-Will convert any objects, be it Infantry, Building, Aircraft or Vehicle, with ID GACNST on the processed maps to an object of same type with ID YACNST.
+Will convert any objects, be it Infantry, Building, Aircraft, Vehicle or Terrain with ID GACNST on the processed maps to an object of same type with ID YACNST.
 
+**Example #2**
+<pre>
+[ObjectRules]
+GACNST
+</pre>
+
+Will remove any objects, be it Infantry, Building, Aircraft, Vehicle or Terrain with ID GACNST on the processed maps.
 
 ### SectionRules
 
 A list of section name, keys and values conversion rules, each on it's own line with | as a separator between section name, key and value information.
 
-** Example #1:**
+**Example #1:**
 <pre>
 [SectionRules]
 Basic|Official|no
@@ -122,7 +129,7 @@ Basic|Official|no
 
 Sets the value for key 'Official' under section 'Basic' to 'no'.
 
-** Example #2:**
+**Example #2:**
 <pre>
 [SectionRules]
 Basic|Official=
@@ -130,7 +137,7 @@ Basic|Official=
 
 Removes key 'Official' under section 'Basic'.
 
-** Example #3:**
+**Example #3:**
 <pre>
 [SectionRules]
 Basic=
@@ -138,7 +145,7 @@ Basic=
 
 Removes section 'Basic' altogether.
 
-** Example #4:**
+**Example #4:**
 <pre>
 [SectionRules]
 Basic=NotSoBasic|Official=Unofficial|Yes
@@ -146,7 +153,7 @@ Basic=NotSoBasic|Official=Unofficial|Yes
 
 Changes name of section 'Basic' to 'NotSoBasic', name of key 'Official' under said section to 'Unofficial' and it's value to 'Yes'.
 
-** Example #5:**
+**Example #5:**
 <pre>
 [SectionRules]
 Basic|Official|$GETVAL(SpecialFlags,DestroyableBridges)

@@ -492,6 +492,7 @@ namespace MapTool
 
         private bool MatchesRule(string value, string id)
         {
+            if (value.Equals(id)) return true;
             string[] sp = value.Split(',');
             if (sp.Length < 2) return false;
             if (sp[1].Equals(id)) return true;
