@@ -13,7 +13,9 @@ using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
 using System.Threading;
+using System.Reflection;
 using StarkkuUtils.FileTypes;
+using StarkkuUtils.Tools;
 
 namespace MapTool_UI
 {
@@ -36,7 +38,7 @@ namespace MapTool_UI
             loadProfiles();
             InitializeComponent();
             listProfiles.DataSource = profiles;
-            Version v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            Version v = Assembly.GetExecutingAssembly().GetName().Version;
             Text += " v." + v.ToString();
             if (profiles.Count > 0 && listProfiles.SelectedIndex != -1) buttonEditProfile.Enabled = true;
             string ext1 = "", ext2 = "", delim = "", delim2 = "";
@@ -48,6 +50,11 @@ namespace MapTool_UI
                 ext2 += delim2 + "*" + ValidMapExts[i];
             }
             openFileDialog.Filter = "Map files (" + ext1 + ")|" + ext2;
+            if (EnableWriteDebugLog)
+            {
+                string logfile = AppDomain.CurrentDomain.BaseDirectory + Path.ChangeExtension(AppDomain.CurrentDomain.FriendlyName, ".log");
+                Logger.Initialize(logfile, true, false);
+            }
         }
 
         private void parseArguments(string[] args)
@@ -207,48 +214,58 @@ namespace MapTool_UI
 
         private void buttonConvert_Click(object sender, EventArgs e)
         {
+            textBoxLogger.Text = "";
             appendToLog("Processing maps.\r\n");
             tabControl.SelectedIndex = 1;
-            foreach (ListBoxFile f in listFiles.Items)
+            ThreadPool.QueueUserWorkItem(delegate (object state)
             {
-                processMap(f.FileName);
-            }
+                toggleControlState(false);
+                foreach (ListBoxFile f in listFiles.Items)
+                {
+                    processMap(f.FileName);
+                }
+                toggleControlState(true);
+                appendToLog("Processed all maps.");
+                appendToLog("");
+            });
         }
         private void processMap(string filename)
         {
             string outputfilename = Path.GetDirectoryName(filename) + "\\" + Path.GetFileNameWithoutExtension(filename) + "_altered" + Path.GetExtension(filename);
             if (cbOverwrite.Checked) outputfilename = filename;
             string extra = "";
-            if (EnableWriteDebugLog) extra += " -log";
+            //if (EnableWriteDebugLog) extra += " -log";
             string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + selectedprofile.FileName + "\"" + extra;
-            ThreadPool.QueueUserWorkItem(delegate (object state)
+
+            try
             {
-                try
+                var p = new Process { StartInfo = { FileName = AppDomain.CurrentDomain.BaseDirectory + MapToolExecutable, Arguments = cmd } };
+
+                // Catch the command line output to display in log.
+                p.OutputDataReceived += ConsoleDataReceived;
+                p.StartInfo.CreateNoWindow = true;
+                p.StartInfo.RedirectStandardOutput = true;
+                p.StartInfo.UseShellExecute = false;
+                p.Start();
+
+                p.BeginOutputReadLine();
+                p.WaitForExit();
+                if (p.ExitCode == 0)
                 {
-                    toggleControlState(false);
-                    var p = new Process { StartInfo = { FileName = AppDomain.CurrentDomain.BaseDirectory + MapToolExecutable, Arguments = cmd } };
-
-                    // Catch the command line output to display in log.
-                    p.OutputDataReceived += ConsoleDataReceived;
-                    p.StartInfo.CreateNoWindow = true;
-                    p.StartInfo.RedirectStandardOutput = true;
-                    p.StartInfo.UseShellExecute = false;
-                    p.Start();
-                    p.BeginOutputReadLine();
-
-                    p.WaitForExit();
-
-                    if (p.ExitCode == 0)
-                        appendToLog("Successfully finished processing map '" + filename + "'.");
-                    else
-                        appendToLog("Processing on map '" + filename + "' failed.");
-                    toggleControlState(true);
+                    appendToLog("");
+                    appendToLog("Successfully finished processing map '" + filename + "'.");
                 }
-                catch (Exception e)
+                else
                 {
-                    appendToLog("Error encountered. Message: " + e.Message);
+                    appendToLog("");
+                    appendToLog("Processing on map '" + filename + "' failed.");
                 }
-            });
+                appendToLog("");
+            }
+            catch (Exception e)
+            {
+                appendToLog("Error encountered. Message: " + e.Message);
+            }
         }
         private void ConsoleDataReceived(object sender, DataReceivedEventArgs e)
         {
@@ -258,12 +275,17 @@ namespace MapTool_UI
         private delegate void LogDelegate(string s);
         private void appendToLog(string s)
         {
+            if (s == null) return;
             if (InvokeRequired)
             {
                 Invoke(new LogDelegate(appendToLog), s);
                 return;
             }
             textBoxLogger.AppendText(s + "\r\n");
+            if (EnableWriteDebugLog)
+            {
+                Logger.LogToFileOnly(s);
+            }
         }
 
         private delegate void ControlStateDelegate(bool enable);

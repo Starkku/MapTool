@@ -135,7 +135,7 @@ namespace MapTool
                     newTheater = profileConfig.GetKey("TheaterRules", "NewTheater", null);
                     try
                     {
-                        tmp = profileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
+                        tmp = profileConfig.GetKey("TheaterRules", "ApplicableTheaters", "").Split(',');
                     }
                     catch (Exception)
                     {
@@ -173,7 +173,7 @@ namespace MapTool
             Logger.Info("Attempting to modify theater data of the map file.");
             if (mapTheater != null && !applicableTheaters.Contains(mapTheater))
             {
-                Logger.Warn("Map theater declaration does not match profile configuration. No modifications will be made to the theater data.");
+                Logger.Warn("Skipping altering theater data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
             }
             if (newTheater != "" && isValidTheatreName(newTheater))
@@ -187,7 +187,7 @@ namespace MapTool
         public void ConvertTileData()
         {
             if (!Initialized || isoMapPack5.Count < 1 || tilerules == null || tilerules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the tile data."); return; }
+            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Skipping altering tile data - ApplicableTheaters does not contain entry matching map theater."); return; }
             Logger.Info("Attempting to modify tile data of the map file.");
             ApplyTileConversionRules();
         }
