@@ -135,7 +135,7 @@ namespace MapTool
                     newTheater = profileConfig.GetKey("TheaterRules", "NewTheater", null);
                     try
                     {
-                        tmp = profileConfig.GetKey("TheaterRules", "ApplicableTheaters", "").Split(',');
+                        tmp = profileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
                     }
                     catch (Exception)
                     {
