@@ -134,8 +134,11 @@ namespace MapTool
                     if (ProfileConfig.SectionExists("ObjectRules")) objectrules = ProfileConfig.GetValues("ObjectRules");
                     if (ProfileConfig.SectionExists("SectionRules")) sectionrules = MergeKVP(ProfileConfig.GetKeyValuePairs("SectionRules"));
 
-                    string[] tmp = null;
                     NewTheater = ProfileConfig.GetKey("TheaterRules", "NewTheater", null);
+                    if (NewTheater != null)
+                        NewTheater = NewTheater.ToUpper();
+
+                    string[] tmp = null;
                     try
                     {
                         tmp = ProfileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
@@ -143,8 +146,6 @@ namespace MapTool
                     catch (Exception)
                     {
                     }
-                    if (NewTheater != null) NewTheater = NewTheater.ToUpper();
-                    else NewTheater = MapTheater;
                     if (tmp != null)
                     {
                         for (int i = 0; i < tmp.Length; i++)
@@ -155,7 +156,7 @@ namespace MapTool
                     if (ApplicableTheaters.Count < 1)
                         ApplicableTheaters.AddRange(new string[] { "TEMPERATE", "SNOW", "URBAN", "DESERT", "LUNAR", "NEWURBAN" });
 
-                    if (tilerules == null && overlayrules == null && NewTheater == null && objectrules == null && sectionrules == null)
+                    if (tilerules == null && overlayrules == null && objectrules == null && sectionrules == null && NewTheater == null)
                     {
                         Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
@@ -178,7 +179,7 @@ namespace MapTool
 
         public void ConvertTheaterData()
         {
-            if (!Initialized || ApplicableTheaters == null || NewTheater == null || (MapTheater != null && NewTheater == MapTheater)) return;
+            if (!Initialized || ApplicableTheaters == null || NewTheater == null) return;
             Logger.Info("Attempting to modify theater data of the map file.");
             if (MapTheater != null && !ApplicableTheaters.Contains(MapTheater))
             {
