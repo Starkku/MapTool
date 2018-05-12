@@ -123,6 +123,10 @@ namespace MapTool
 
                     UseMapOptimize = Conversion.GetBoolFromString(ProfileConfig.GetKey("ProfileData", "ApplyMapOptimization", "false"), false);
                     UseMapCompress = Conversion.GetBoolFromString(ProfileConfig.GetKey("ProfileData", "ApplyMapCompress", "false"), false);
+                    IsoMapPack5SortBy = ProfileConfig.GetKey("IsoMapPack5", "SortBy", null);
+                    if (IsoMapPack5SortBy != null)
+                        IsoMapPack5SortBy = IsoMapPack5SortBy.ToUpper();
+                    RemoveLevel0ClearTiles = Conversion.GetBoolFromString(ProfileConfig.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false"), false);
 
                     string[] tilerules = null;
                     string[] overlayrules = null;
@@ -156,17 +160,15 @@ namespace MapTool
                     if (ApplicableTheaters.Count < 1)
                         ApplicableTheaters.AddRange(new string[] { "TEMPERATE", "SNOW", "URBAN", "DESERT", "LUNAR", "NEWURBAN" });
 
-                    if (tilerules == null && overlayrules == null && objectrules == null && sectionrules == null && NewTheater == null)
+                    // Allow saving map without any other changes if either of these are set and ApplicableTheaters allows it.
+                    if ((UseMapCompress || UseMapOptimize) && AllowProcessing()) Altered = true;
+
+                    if (!Altered && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null && NewTheater == null)
                     {
                         Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
                         return;
                     }
-
-                    IsoMapPack5SortBy = ProfileConfig.GetKey("IsoMapPack5", "SortBy", null);
-                    if (IsoMapPack5SortBy != null) IsoMapPack5SortBy = IsoMapPack5SortBy.ToUpper();
-
-                    RemoveLevel0ClearTiles = Conversion.GetBoolFromString(ProfileConfig.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false"), false);
 
                     ParseConfigFile(tilerules, TileRules);
                     ParseConfigFile(overlayrules, OverlayRules);
@@ -177,15 +179,21 @@ namespace MapTool
             Initialized = true;
         }
 
+        private bool AllowProcessing()
+        {
+            if (ApplicableTheaters == null || MapTheater == null || !ApplicableTheaters.Contains(MapTheater)) return false;
+            return true;
+        }
+
         public void ConvertTheaterData()
         {
-            if (!Initialized || ApplicableTheaters == null || NewTheater == null) return;
-            Logger.Info("Attempting to modify theater data of the map file.");
-            if (MapTheater != null && !ApplicableTheaters.Contains(MapTheater))
+            if (!Initialized || NewTheater == null) return;
+            else if (!AllowProcessing())
             {
                 Logger.Warn("Skipping altering theater data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
             }
+            Logger.Info("Attempting to modify theater data of the map file.");
             if (NewTheater != "" && IsValidTheatreName(NewTheater))
             {
                 MapConfig.SetKey("Map", "Theater", NewTheater);
@@ -197,7 +205,11 @@ namespace MapTool
         public void ConvertTileData()
         {
             if (!Initialized || IsoMapPack5.Count < 1 || TileRules == null || TileRules.Count < 1) return;
-            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Skipping altering tile data - ApplicableTheaters does not contain entry matching map theater."); return; }
+            else if (!AllowProcessing())
+            {
+                Logger.Warn("Skipping altering tile data - ApplicableTheaters does not contain entry matching map theater.");
+                return;
+            }
             Logger.Info("Attempting to modify tile data of the map file.");
             ApplyTileConversionRules();
         }
@@ -242,6 +254,9 @@ namespace MapTool
                 }
             }
 
+            if (RemoveLevel0ClearTiles)
+                Logger.Info("RemoveLevel0ClearTiles set: Will attempt to remove all tile data with tile index & level set to 0");
+
             // Remove Height Level 0 Clear Tiles if set in profile
             foreach (MapTileContainer t in IsoMapPack5)
             {
@@ -265,6 +280,7 @@ namespace MapTool
             // Sort the tiles before compressing and making IsoMapPack5
             if (IsoMapPack5SortBy != null)
             {
+                Logger.Info("IsoMapPack5SortBy set: Will attempt to sort IsoMapPack5 data using sorting mode: " + IsoMapPack5SortBy);
                 switch (IsoMapPack5SortBy)
                 {
                     case "X_LEVEL_TILEINDEX":
@@ -599,7 +615,11 @@ namespace MapTool
         public void ConvertSectionData()
         {
             if (!Initialized || SectionRules == null || SectionRules.Count < 1) return;
-            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the section data."); return; }
+            else if (!AllowProcessing())
+            {
+                Logger.Warn("Skipping altering section data - ApplicableTheaters does not contain entry matching map theater.");
+                return;
+            }
             Logger.Info("Attempting to modify section data of the map file.");
             ApplySectionConversionRules();
         }
@@ -651,10 +671,12 @@ namespace MapTool
         public void ConvertOverlayData()
         {
             if (!Initialized || OverlayRules == null || OverlayRules.Count < 1) return;
-            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the overlay data."); return; }
-
+            else if (!AllowProcessing())
+            {
+                Logger.Warn("Skipping altering overlay data - ApplicableTheaters does not contain entry matching map theater.");
+                return;
+            }
             ParseOverlayPack();
-
             Logger.Info("Attempting to modify overlay data of the map file.");
             ApplyOverlayConversionRules();
         }
@@ -720,15 +742,11 @@ namespace MapTool
 
         private void OverrideBase64MapSection(string sectionName, string data)
         {
-            //mapConfig.RemoveSection(sectionName);
-            //mapConfig.AddSection(sectionName);
             int lx = 70;
-            //int rownum = 1;
             List<string> lines = new List<string>();
             for (int x = 0; x < data.Length; x += lx)
             {
                 lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
-                //mapConfig.SetKey(sectionName, rownum++.ToString(CultureInfo.InvariantCulture), data.Substring(x, Math.Min(lx, data.Length - x)));
             }
             MapConfig.ReplaceSectionValues(sectionName, lines);
         }
@@ -776,10 +794,13 @@ namespace MapTool
         {
             if (UseMapOptimize)
             {
+                Logger.Info("ApplyMapOptimization set: Saved map will have map section order optimizations applied.");
                 MapConfig.MoveSectionToFirst("Basic");
                 MapConfig.MoveSectionToFirst("MultiplayerDialogSettings");
                 MapConfig.MoveSectionToLast("Digest");
             }
+            if (UseMapCompress)
+                Logger.Info("ApplyMapCompress set: Saved map will have no unnecessary whitespaces.");
             MapConfig.Save(FileOutput, !UseMapCompress);
         }
 

@@ -16,7 +16,6 @@ using StarkkuUtils.Utilities;
 
 namespace MapTool
 {
-
     class Program
     {
         private static OptionSet options;
