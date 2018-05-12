@@ -142,6 +142,7 @@ namespace MapTool
                     {
                     }
                     if (NewTheater != null) NewTheater = NewTheater.ToUpper();
+                    else NewTheater = MapTheater;
                     if (tmp != null)
                     {
                         for (int i = 0; i < tmp.Length; i++)
@@ -170,7 +171,7 @@ namespace MapTool
 
         public void ConvertTheaterData()
         {
-            if (!Initialized || ApplicableTheaters == null || NewTheater == null) return;
+            if (!Initialized || ApplicableTheaters == null || NewTheater == null || (MapTheater != null && NewTheater == MapTheater)) return;
             Logger.Info("Attempting to modify theater data of the map file.");
             if (MapTheater != null && !ApplicableTheaters.Contains(MapTheater))
             {
