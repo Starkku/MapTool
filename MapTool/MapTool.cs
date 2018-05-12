@@ -14,8 +14,8 @@ using System.Text;
 using System.IO;
 using CNCMaps.FileFormats.Encodings;
 using CNCMaps.FileFormats.VirtualFileSystem;
-using StarkkuUtils.Tools;
 using StarkkuUtils.FileTypes;
+using StarkkuUtils.Utilities;
 using System.Text.RegularExpressions;
 
 namespace MapTool
@@ -121,8 +121,8 @@ namespace MapTool
                         }
                     }
 
-                    UseMapOptimize = ParseBool(ProfileConfig.GetKey("ProfileData", "ApplyMapOptimization", "false").Trim(), false);
-                    UseMapCompress = ParseBool(ProfileConfig.GetKey("ProfileData", "ApplyMapCompress", "false").Trim(), false);
+                    UseMapOptimize = Conversion.GetBoolFromString(ProfileConfig.GetKey("ProfileData", "ApplyMapOptimization", "false"), false);
+                    UseMapCompress = Conversion.GetBoolFromString(ProfileConfig.GetKey("ProfileData", "ApplyMapCompress", "false"), false);
 
                     string[] tilerules = null;
                     string[] overlayrules = null;
@@ -166,7 +166,7 @@ namespace MapTool
                     IsoMapPack5SortBy = ProfileConfig.GetKey("IsoMapPack5", "SortBy", null);
                     if (IsoMapPack5SortBy != null) IsoMapPack5SortBy = IsoMapPack5SortBy.ToUpper();
 
-                    RemoveLevel0ClearTiles = ParseBool(ProfileConfig.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false").Trim(), false);
+                    RemoveLevel0ClearTiles = Conversion.GetBoolFromString(ProfileConfig.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false"), false);
 
                     ParseConfigFile(tilerules, TileRules);
                     ParseConfigFile(overlayrules, OverlayRules);
@@ -402,11 +402,11 @@ namespace MapTool
                 int subovr = -1;
                 if (values.Length >= 3 && values[2] != null && !values[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    heightovr = ParseInt(values[2], -1);
+                    heightovr = Conversion.GetIntFromString(values[2], -1);
                 }
                 if (values.Length >= 4 && values[3] != null && !values[3].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    subovr = ParseInt(values[3], -1);
+                    subovr = Conversion.GetIntFromString(values[3], -1);
                 }
 
                 if (pm1ranged && pm2ranged)
@@ -798,36 +798,5 @@ namespace MapTool
             if (theaterName == "TEMPERATE" || theaterName == "SNOW" || theaterName == "LUNAR" || theaterName == "DESERT" || theaterName == "URBAN" || theaterName == "NEWURBAN") return true;
             return false;
         }
-        public static bool ParseBool(string s, bool defval)
-        {
-            if (s.Equals("yes", StringComparison.InvariantCultureIgnoreCase) || s.Equals("true", StringComparison.InvariantCultureIgnoreCase)) return true;
-            else if (s.Equals("no", StringComparison.InvariantCultureIgnoreCase) || s.Equals("false", StringComparison.InvariantCultureIgnoreCase)) return false;
-            else return defval;
-        }
-
-        public static int ParseInt(string str, int defaultValue)
-        {
-            try
-            {
-                return Int32.Parse(str);
-            }
-            catch (Exception)
-            {
-                return defaultValue;
-            }
-        }
-
-        public static short ShortFromBytes(byte b1, byte b2)
-        {
-            byte[] b = new byte[] { b2, b1 };
-            return BitConverter.ToInt16(b, 0);
-        }
-
-        public static int IntFromBytes(byte b1, byte b2, byte b3, byte b4)
-        {
-            byte[] b = new byte[] { b1, b2, b3, b4 };
-            return BitConverter.ToInt32(b, 0);
-        }
-
     }
 }
