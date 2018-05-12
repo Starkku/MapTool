@@ -777,7 +777,9 @@ namespace MapTool
         {
             if (UseMapOptimize)
             {
-                MapConfig.SetFirstAndLastSection("Basic", "Digest");
+                MapConfig.MoveSectionToFirst("Basic");
+                MapConfig.MoveSectionToFirst("MultiplayerDialogSettings");
+                MapConfig.MoveSectionToLast("Digest");
             }
             MapConfig.Save(FileOutput, !UseMapCompress);
         }
