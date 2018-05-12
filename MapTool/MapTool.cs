@@ -40,25 +40,27 @@ namespace MapTool
         private string FileInput;
         private string FileOutput;
 
-        INIFile MapConfig;                                                                // Map file.
-        string MapTheater = null;                                                         // Map theater data.
+        private INIFile MapConfig;                                                                // Map file.
+        private string MapTheater = null;                                                         // Map theater data.
         private int Map_Width;
         private int Map_Height;
         private int Map_FullWidth;
         private int Map_FullHeight;
-        List<MapTileContainer> IsoMapPack5 = new List<MapTileContainer>();                // Map tile data.
-        byte[] OverlayPack = null;                                                        // Map overlay ID data.
-        byte[] OverlayDataPack = null;                                                    // Map overlay frame data.
+        private List<MapTileContainer> IsoMapPack5 = new List<MapTileContainer>();                // Map tile data.
+        private byte[] OverlayPack = null;                                                        // Map overlay ID data.
+        private byte[] OverlayDataPack = null;                                                    // Map overlay frame data.
 
-        INIFile ProfileConfig;                                                            // Conversion profile INI file.
-        List<string> ApplicableTheaters = new List<string>();                             // Conversion profile applicable theaters.
-        string NewTheater = null;                                                         // Conversion profile new theater.
-        List<ByteIDConversionRule> TileRules = new List<ByteIDConversionRule>();          // Conversion profile tile rules.
-        List<ByteIDConversionRule> OverlayRules = new List<ByteIDConversionRule>();       // Conversion profile overlay rules.
-        List<StringIDConversionRule> ObjectRules = new List<StringIDConversionRule>();    // Conversion profile object rules.
-        List<SectionConversionRule> SectionRules = new List<SectionConversionRule>();     // Conversion profile section rules.
+        private INIFile ProfileConfig;                                                            // Conversion profile INI file.
+        private List<string> ApplicableTheaters = new List<string>();                             // Conversion profile applicable theaters.
+        private string NewTheater = null;                                                         // Conversion profile new theater.
+        private List<ByteIDConversionRule> TileRules = new List<ByteIDConversionRule>();          // Conversion profile tile rules.
+        private List<ByteIDConversionRule> OverlayRules = new List<ByteIDConversionRule>();       // Conversion profile overlay rules.
+        private List<StringIDConversionRule> ObjectRules = new List<StringIDConversionRule>();    // Conversion profile object rules.
+        private List<SectionConversionRule> SectionRules = new List<SectionConversionRule>();     // Conversion profile section rules.
         private bool UseMapOptimize = false;
         private bool UseMapCompress = false;
+        private string IsoMapPack5SortBy = null;
+        private bool RemoveLevel0ClearTiles = false;
 
         INIFile TheaterConfig;                                                            // Theater config INI file.
 
@@ -160,10 +162,15 @@ namespace MapTool
                         return;
                     }
 
-                    ParseConfigFile(tilerules, this.TileRules);
-                    ParseConfigFile(overlayrules, this.OverlayRules);
-                    ParseConfigFile(objectrules, this.ObjectRules);
-                    ParseConfigFile(sectionrules, this.SectionRules);
+                    IsoMapPack5SortBy = ProfileConfig.GetKey("IsoMapPack5", "SortBy", null);
+                    if (IsoMapPack5SortBy != null) IsoMapPack5SortBy = IsoMapPack5SortBy.ToUpper();
+
+                    RemoveLevel0ClearTiles = ParseBool(ProfileConfig.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false").Trim(), false);
+
+                    ParseConfigFile(tilerules, TileRules);
+                    ParseConfigFile(overlayrules, OverlayRules);
+                    ParseConfigFile(objectrules, ObjectRules);
+                    ParseConfigFile(sectionrules, SectionRules);
                 }
             }
             Initialized = true;
@@ -196,12 +203,11 @@ namespace MapTool
 
         private void ApplyTileConversionRules()
         {
-            int cells = (Map_Width * 2 - 1) * Map_Height;
-            int lzoPackSize = cells * 11 + 4;
-            byte[] isoMapPack = new byte[lzoPackSize];
             int l, h;
-            int i = 0;
+            List<MapTileContainer> tilesetForSort = new List<MapTileContainer>();
+            List<MapTileContainer> tilesetSorted = new List<MapTileContainer>();
 
+            // Apply tile conversion rules
             foreach (MapTileContainer t in IsoMapPack5)
             {
                 if (t.TileIndex < 0 || t.TileIndex == 65535) t.TileIndex = 0;
@@ -235,6 +241,83 @@ namespace MapTool
                         }
                     }
                 }
+            }
+
+            // Remove Height Level 0 Clear Tiles if set in profile
+            foreach (MapTileContainer t in IsoMapPack5)
+            {
+                if (RemoveLevel0ClearTiles)
+                {
+                    if (t.TileIndex > 0 || t.Level > 0 || t.SubTileIndex > 0)
+                        tilesetForSort.Add(t);
+                }
+                else
+                {
+                    tilesetForSort.Add(t);
+                }
+            }
+
+            if (tilesetForSort.Count == 0)
+            {
+                MapTileContainer tile = new MapTileContainer((short)Map_Width, 1, 0, 0, 0, 0);
+                tilesetForSort.Add(tile);
+            }
+
+            // Sort the tiles before compressing and making IsoMapPack5
+            if (IsoMapPack5SortBy != null)
+            {
+                switch (IsoMapPack5SortBy)
+                {
+                    case "X_LEVEL_TILEINDEX":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.X).ThenBy(x => x.Level).ThenBy(x => x.TileIndex).ToList();
+                        break;
+                    case "X_TILEINDEX_LEVEL":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.X).ThenBy(x => x.TileIndex).ThenBy(x => x.Level).ToList();
+                        break;
+                    case "TILEINDEX_X_LEVEL":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.TileIndex).ThenBy(x => x.X).ThenBy(x => x.Level).ToList();
+                        break;
+                    case "LEVEL_X_TILEINDEX":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.Level).ThenBy(x => x.X).ThenBy(x => x.TileIndex).ToList();
+                        break;
+                    case "X":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.X).ToList();
+                        break;
+                    case "LEVEL":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.Level).ToList();
+                        break;
+                    case "TILEINDEX":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.TileIndex).ToList();
+                        break;
+                    case "SUBTILEINDEX":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.SubTileIndex).ToList();
+                        break;
+                    case "UDATA":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.UData).ToList();
+                        break;
+                    case "Y":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.Y).ToList();
+                        break;
+                    default:
+                        tilesetSorted.AddRange(tilesetForSort);
+                        break;
+                }
+                TileSetToMapPack(tilesetSorted);
+            }
+            else
+            {
+                TileSetToMapPack(tilesetForSort);
+            }
+            Altered = true;
+        }
+
+        private void TileSetToMapPack(List<MapTileContainer> tileSet)
+        {
+            byte[] isoMapPack = new byte[tileSet.Count * 11 + 4];
+            int i = 0;
+
+            foreach (MapTileContainer t in tileSet)
+            {
                 byte[] x = BitConverter.GetBytes(t.X);
                 byte[] y = BitConverter.GetBytes(t.Y);
                 byte[] tilei = BitConverter.GetBytes(t.TileIndex);
@@ -251,10 +334,10 @@ namespace MapTool
                 isoMapPack[i + 10] = t.Level;
                 i += 11;
             }
+
             byte[] lzo = Format5.Encode(isoMapPack, 5);
             string data = Convert.ToBase64String(lzo, Base64FormattingOptions.None);
             OverrideBase64MapSection("IsoMapPack5", data);
-            Altered = true;
         }
 
         private void ParseConfigFile(string[] newRules, List<ByteIDConversionRule> currentRules)
@@ -429,6 +512,16 @@ namespace MapTool
                 cells = (Map_Width * 2 - 1) * Map_Height;
                 int lzoPackSize = cells * 11 + 4;
                 isoMapPack = new byte[lzoPackSize];
+                // Fill up and filter later
+                int j = 0;
+                for (int i = 0; i < cells; i++)
+                {
+                    isoMapPack[j] = 0x88;
+                    isoMapPack[j + 1] = 0x40;
+                    isoMapPack[j + 2] = 0x88;
+                    isoMapPack[j + 3] = 0x40;
+                    j += 11;
+                }
                 uint total_decompress_size = Format5.DecodeInto(lzoData, isoMapPack);
             }
             catch (Exception)
@@ -446,7 +539,10 @@ namespace MapTool
                 byte udata = mf.ReadByte();
                 int dx = rx - ry + Map_FullWidth - 1;
                 int dy = rx + ry - Map_FullWidth - 1;
-                IsoMapPack5.Add(new MapTileContainer((short)rx, (short)ry, tilenum, subtile, level, udata));
+                if (rx > 0 && ry > 0 && rx <= 16384 && ry <= 16384)
+                {
+                    IsoMapPack5.Add(new MapTileContainer((short)rx, (short)ry, tilenum, subtile, level, udata));
+                }
             }
             return true;
         }
