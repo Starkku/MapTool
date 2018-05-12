@@ -17,6 +17,7 @@ using CNCMaps.FileFormats.VirtualFileSystem;
 using StarkkuUtils.Tools;
 using StarkkuUtils.FileTypes;
 using System.Text.RegularExpressions;
+
 namespace MapTool
 {
     class MapTool
@@ -36,132 +37,132 @@ namespace MapTool
             set;
         }
 
-        private string fileInput;
-        private string fileOutput;
-        private int map_Width;
-        private int map_Height;
-        private int map_FullWidth;
-        private int map_FullHeight;
+        private string FileInput;
+        private string FileOutput;
 
-        private string nl = Environment.NewLine;
+        INIFile MapConfig;                                                                // Map file.
+        string MapTheater = null;                                                         // Map theater data.
+        private int Map_Width;
+        private int Map_Height;
+        private int Map_FullWidth;
+        private int Map_FullHeight;
+        List<MapTileContainer> IsoMapPack5 = new List<MapTileContainer>();                // Map tile data.
+        byte[] OverlayPack = null;                                                        // Map overlay ID data.
+        byte[] OverlayDataPack = null;                                                    // Map overlay frame data.
 
-        INIFile mapConfig;                                                                // Map file.
-        INIFile profileConfig;                                                            // Conversion profile INI file.
-        INIFile theaterConfig;                                                            // Theater config INI file.
-        List<MapTileContainer> isoMapPack5 = new List<MapTileContainer>();                // Map tile data.
-        byte[] overlayPack = null;                                                        // Map overlay ID data.
-        byte[] overlayDataPack = null;                                                    // Map overlay frame data.
-        string mapTheater = null;                                                         // Map theater data.
-        List<string> applicableTheaters = new List<string>();                             // Conversion profile applicable theaters.
-        string newTheater = null;                                                         // Conversion profile new theater.
-        List<ByteIDConversionRule> tilerules = new List<ByteIDConversionRule>();          // Conversion profile tile rules.
-        List<ByteIDConversionRule> overlayrules = new List<ByteIDConversionRule>();       // Conversion profile overlay rules.
-        List<StringIDConversionRule> objectrules = new List<StringIDConversionRule>();    // Conversion profile object rules.
-        List<SectionConversionRule> sectionrules = new List<SectionConversionRule>();     // Conversion profile section rules.
+        INIFile ProfileConfig;                                                            // Conversion profile INI file.
+        List<string> ApplicableTheaters = new List<string>();                             // Conversion profile applicable theaters.
+        string NewTheater = null;                                                         // Conversion profile new theater.
+        List<ByteIDConversionRule> TileRules = new List<ByteIDConversionRule>();          // Conversion profile tile rules.
+        List<ByteIDConversionRule> OverlayRules = new List<ByteIDConversionRule>();       // Conversion profile overlay rules.
+        List<StringIDConversionRule> ObjectRules = new List<StringIDConversionRule>();    // Conversion profile object rules.
+        List<SectionConversionRule> SectionRules = new List<SectionConversionRule>();     // Conversion profile section rules.
         private bool UseMapOptimize = false;
         private bool UseMapCompress = false;
 
-        public MapTool(string infile, string outfile, string fileconfig = null, bool list = false)
+        INIFile TheaterConfig;                                                            // Theater config INI file.
+
+        public MapTool(string inputFile, string outputFile, string fileConfig = null, bool list = false)
         {
             Initialized = false;
             Altered = false;
-            fileInput = infile;
-            fileOutput = outfile;
+            FileInput = inputFile;
+            FileOutput = outputFile;
 
-            if (list && !String.IsNullOrEmpty(fileInput))
+            if (list && !String.IsNullOrEmpty(FileInput))
             {
-                theaterConfig = new INIFile(fileInput);
-                if (!theaterConfig.Initialized)
+                TheaterConfig = new INIFile(FileInput);
+                if (!TheaterConfig.Initialized)
                 {
                     Initialized = false;
                     return;
                 }
             }
 
-            else if (!String.IsNullOrEmpty(fileInput) && !String.IsNullOrEmpty(fileOutput))
+            else if (!String.IsNullOrEmpty(FileInput) && !String.IsNullOrEmpty(FileOutput))
             {
 
-                Logger.Info("Reading map file '" + infile + "'.");
-                mapConfig = new INIFile(infile);
-                if (!mapConfig.Initialized)
+                Logger.Info("Reading map file '" + inputFile + "'.");
+                MapConfig = new INIFile(inputFile);
+                if (!MapConfig.Initialized)
                 {
                     Initialized = false;
                     return;
                 }
-                string[] size = mapConfig.GetKey("Map", "Size", "").Split(',');
-                map_FullWidth = int.Parse(size[2]);
-                map_FullHeight = int.Parse(size[3]);
-                Initialized = parseMapPack();
-                mapTheater = mapConfig.GetKey("Map", "Theater", null);
-                if (mapTheater != null) mapTheater = mapTheater.ToUpper();
+                string[] size = MapConfig.GetKey("Map", "Size", "").Split(',');
+                Map_FullWidth = int.Parse(size[2]);
+                Map_FullHeight = int.Parse(size[3]);
+                Initialized = ParseMapPack();
+                MapTheater = MapConfig.GetKey("Map", "Theater", null);
+                if (MapTheater != null) MapTheater = MapTheater.ToUpper();
 
-                profileConfig = new INIFile(fileconfig);
-                if (!profileConfig.Initialized) Initialized = false;
+                ProfileConfig = new INIFile(fileConfig);
+                if (!ProfileConfig.Initialized) Initialized = false;
                 else
                 {
                     Logger.Info("Parsing conversion profile file.");
 
-                    string IncludeFiles = profileConfig.GetKey("ProfileData", "IncludeFiles", null);
-                    if (!String.IsNullOrEmpty(IncludeFiles))
+                    string include_string = ProfileConfig.GetKey("ProfileData", "IncludeFiles", null);
+                    if (!String.IsNullOrEmpty(include_string))
                     {
-                        string[] inc = IncludeFiles.Split(',');
-                        string basedir = Path.GetDirectoryName(fileconfig);
-                        foreach (string f in inc)
+                        string[] include_files = include_string.Split(',');
+                        string basedir = Path.GetDirectoryName(fileConfig);
+                        foreach (string f in include_files)
                         {
                             if (File.Exists(basedir + "\\" + f))
                             {
                                 INIFile ic = new INIFile(basedir + "\\" + f);
                                 if (!ic.Initialized) continue;
                                 Logger.Info("Merging included file '" + f + "' to conversion profile.");
-                                profileConfig.Merge(ic);
+                                ProfileConfig.Merge(ic);
                             }
                         }
                     }
 
-                    UseMapOptimize = ParseBool(profileConfig.GetKey("ProfileData", "ApplyMapOptimization", "false").Trim(), false);
-                    UseMapCompress = ParseBool(profileConfig.GetKey("ProfileData", "ApplyMapCompress", "false").Trim(), false);
+                    UseMapOptimize = ParseBool(ProfileConfig.GetKey("ProfileData", "ApplyMapOptimization", "false").Trim(), false);
+                    UseMapCompress = ParseBool(ProfileConfig.GetKey("ProfileData", "ApplyMapCompress", "false").Trim(), false);
 
                     string[] tilerules = null;
                     string[] overlayrules = null;
                     string[] objectrules = null;
                     string[] sectionrules = null;
 
-                    if (profileConfig.SectionExists("TileRules")) tilerules = profileConfig.GetValues("TileRules");
-                    if (profileConfig.SectionExists("OverlayRules")) overlayrules = profileConfig.GetValues("OverlayRules");
-                    if (profileConfig.SectionExists("ObjectRules")) objectrules = profileConfig.GetValues("ObjectRules");
-                    if (profileConfig.SectionExists("SectionRules")) sectionrules = mergeKVP(profileConfig.GetKeyValuePairs("SectionRules"));
+                    if (ProfileConfig.SectionExists("TileRules")) tilerules = ProfileConfig.GetValues("TileRules");
+                    if (ProfileConfig.SectionExists("OverlayRules")) overlayrules = ProfileConfig.GetValues("OverlayRules");
+                    if (ProfileConfig.SectionExists("ObjectRules")) objectrules = ProfileConfig.GetValues("ObjectRules");
+                    if (ProfileConfig.SectionExists("SectionRules")) sectionrules = MergeKVP(ProfileConfig.GetKeyValuePairs("SectionRules"));
 
                     string[] tmp = null;
-                    newTheater = profileConfig.GetKey("TheaterRules", "NewTheater", null);
+                    NewTheater = ProfileConfig.GetKey("TheaterRules", "NewTheater", null);
                     try
                     {
-                        tmp = profileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
+                        tmp = ProfileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
                     }
                     catch (Exception)
                     {
                     }
-                    if (newTheater != null) newTheater = newTheater.ToUpper();
+                    if (NewTheater != null) NewTheater = NewTheater.ToUpper();
                     if (tmp != null)
                     {
                         for (int i = 0; i < tmp.Length; i++)
                         {
-                            applicableTheaters.Add(tmp[i].Trim().ToUpper());
+                            ApplicableTheaters.Add(tmp[i].Trim().ToUpper());
                         }
                     }
-                    if (applicableTheaters.Count < 1)
-                        applicableTheaters.AddRange(new string[] { "TEMPERATE", "SNOW", "URBAN", "DESERT", "LUNAR", "NEWURBAN" });
+                    if (ApplicableTheaters.Count < 1)
+                        ApplicableTheaters.AddRange(new string[] { "TEMPERATE", "SNOW", "URBAN", "DESERT", "LUNAR", "NEWURBAN" });
 
-                    if (tilerules == null && overlayrules == null && newTheater == null && objectrules == null && sectionrules == null)
+                    if (tilerules == null && overlayrules == null && NewTheater == null && objectrules == null && sectionrules == null)
                     {
                         Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
                         return;
                     }
 
-                    parseConfigFile(tilerules, this.tilerules);
-                    parseConfigFile(overlayrules, this.overlayrules);
-                    parseConfigFile(objectrules, this.objectrules);
-                    parseConfigFile(sectionrules, this.sectionrules);
+                    ParseConfigFile(tilerules, this.TileRules);
+                    ParseConfigFile(overlayrules, this.OverlayRules);
+                    ParseConfigFile(objectrules, this.ObjectRules);
+                    ParseConfigFile(sectionrules, this.SectionRules);
                 }
             }
             Initialized = true;
@@ -169,44 +170,44 @@ namespace MapTool
 
         public void ConvertTheaterData()
         {
-            if (!Initialized || applicableTheaters == null || newTheater == null) return;
+            if (!Initialized || ApplicableTheaters == null || NewTheater == null) return;
             Logger.Info("Attempting to modify theater data of the map file.");
-            if (mapTheater != null && !applicableTheaters.Contains(mapTheater))
+            if (MapTheater != null && !ApplicableTheaters.Contains(MapTheater))
             {
                 Logger.Warn("Skipping altering theater data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
             }
-            if (newTheater != "" && isValidTheatreName(newTheater))
+            if (NewTheater != "" && IsValidTheatreName(NewTheater))
             {
-                mapConfig.SetKey("Map", "Theater", newTheater);
-                Logger.Info("Map theater declaration changed from '" + mapTheater + "' to '" + newTheater + "'.");
+                MapConfig.SetKey("Map", "Theater", NewTheater);
+                Logger.Info("Map theater declaration changed from '" + MapTheater + "' to '" + NewTheater + "'.");
                 Altered = true;
             }
         }
 
         public void ConvertTileData()
         {
-            if (!Initialized || isoMapPack5.Count < 1 || tilerules == null || tilerules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Skipping altering tile data - ApplicableTheaters does not contain entry matching map theater."); return; }
+            if (!Initialized || IsoMapPack5.Count < 1 || TileRules == null || TileRules.Count < 1) return;
+            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Skipping altering tile data - ApplicableTheaters does not contain entry matching map theater."); return; }
             Logger.Info("Attempting to modify tile data of the map file.");
             ApplyTileConversionRules();
         }
 
         private void ApplyTileConversionRules()
         {
-            int cells = (map_Width * 2 - 1) * map_Height;
+            int cells = (Map_Width * 2 - 1) * Map_Height;
             int lzoPackSize = cells * 11 + 4;
             byte[] isoMapPack = new byte[lzoPackSize];
             int l, h;
             int i = 0;
 
-            foreach (MapTileContainer t in isoMapPack5)
+            foreach (MapTileContainer t in IsoMapPack5)
             {
                 if (t.TileIndex < 0 || t.TileIndex == 65535) t.TileIndex = 0;
-                foreach (ByteIDConversionRule r in tilerules)
+                foreach (ByteIDConversionRule r in TileRules)
                 {
-                    l = r.Original_Start;
-                    h = r.Original_End;
+                    l = r.OriginalStartIndex;
+                    h = r.OriginalEndIndex;
                     if (t.X == 122 && t.Y == 26)
                         t.UData = 0;
                     if (t.TileIndex >= l && t.TileIndex <= h)
@@ -215,20 +216,20 @@ namespace MapTool
                         {
                             t.Level = (byte)Math.Min(r.HeightOverride, 14);
                         }
-                        if (r.SubIdxOverride >= 0)
+                        if (r.SubIndexOverride >= 0)
                         {
-                            t.SubTileIndex = (byte)Math.Min(r.SubIdxOverride, 255);
+                            t.SubTileIndex = (byte)Math.Min(r.SubIndexOverride, 255);
                         }
-                        if (r.New_End == r.New_Start)
+                        if (r.NewEndIndex == r.NewStartIndex)
                         {
-                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + r.New_Start);
-                            t.TileIndex = r.New_Start;
+                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + r.NewStartIndex);
+                            t.TileIndex = r.NewStartIndex;
                             break;
                         }
                         else
                         {
-                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + (r.New_Start + Math.Abs(l - t.TileIndex)));
-                            t.TileIndex = (r.New_Start + Math.Abs(l - t.TileIndex));
+                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + (r.NewStartIndex + Math.Abs(l - t.TileIndex)));
+                            t.TileIndex = (r.NewStartIndex + Math.Abs(l - t.TileIndex));
                             break;
                         }
                     }
@@ -251,32 +252,32 @@ namespace MapTool
             }
             byte[] lzo = Format5.Encode(isoMapPack, 5);
             string data = Convert.ToBase64String(lzo, Base64FormattingOptions.None);
-            overrideBase64MapSection("IsoMapPack5", data);
+            OverrideBase64MapSection("IsoMapPack5", data);
             Altered = true;
         }
 
-        private void parseConfigFile(string[] new_rules, List<ByteIDConversionRule> current_rules)
+        private void ParseConfigFile(string[] newRules, List<ByteIDConversionRule> currentRules)
         {
-            if (new_rules == null || new_rules.Length < 1 || current_rules == null) return;
-            current_rules.Clear();
+            if (newRules == null || newRules.Length < 1 || currentRules == null) return;
+            currentRules.Clear();
             bool pm1ranged = false;
             bool pm2ranged = false;
             int pm1val1 = 0;
             int pm1val2 = 0;
             int pm2val1 = 0;
             int pm2val2 = 0;
-            foreach (string str in new_rules)
+            foreach (string str in newRules)
             {
-                string[] st = str.Split('|');
-                if (st.Length < 2) continue;
-                if (st[0].Contains('-'))
+                string[] values = str.Split('|');
+                if (values.Length < 2) continue;
+                if (values[0].Contains('-'))
                 {
                     pm1ranged = true;
                     try
                     {
-                        string[] st2 = st[0].Split('-');
-                        pm1val1 = Convert.ToInt32(st2[0]);
-                        pm1val2 = Convert.ToInt32(st2[1]);
+                        string[] values_1 = values[0].Split('-');
+                        pm1val1 = Convert.ToInt32(values_1[0]);
+                        pm1val2 = Convert.ToInt32(values_1[1]);
                     }
                     catch (Exception)
                     {
@@ -285,20 +286,20 @@ namespace MapTool
                 }
                 else try
                     {
-                        pm1val1 = Convert.ToInt32(st[0]);
+                        pm1val1 = Convert.ToInt32(values[0]);
                     }
                     catch (Exception)
                     {
                         continue;
                     }
-                if (st[1].Contains('-'))
+                if (values[1].Contains('-'))
                 {
                     pm2ranged = true;
                     try
                     {
-                        string[] st2 = st[1].Split('-');
-                        pm2val1 = Convert.ToInt32(st2[0]);
-                        pm2val2 = Convert.ToInt32(st2[1]);
+                        string[] values_2 = values[1].Split('-');
+                        pm2val1 = Convert.ToInt32(values_2[0]);
+                        pm2val2 = Convert.ToInt32(values_2[1]);
                     }
                     catch (Exception)
                     {
@@ -307,7 +308,7 @@ namespace MapTool
                 }
                 else try
                     {
-                        pm2val1 = Convert.ToInt32(st[1]);
+                        pm2val1 = Convert.ToInt32(values[1]);
                     }
                     catch (Exception)
                     {
@@ -316,115 +317,115 @@ namespace MapTool
 
                 int heightovr = -1;
                 int subovr = -1;
-                if (st.Length >= 3 && st[2] != null && !st[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
+                if (values.Length >= 3 && values[2] != null && !values[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    heightovr = ParseInt(st[2], -1);
+                    heightovr = ParseInt(values[2], -1);
                 }
-                if (st.Length >= 4 && st[3] != null && !st[3].Equals("*", StringComparison.InvariantCultureIgnoreCase))
+                if (values.Length >= 4 && values[3] != null && !values[3].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    subovr = ParseInt(st[3], -1);
+                    subovr = ParseInt(values[3], -1);
                 }
 
                 if (pm1ranged && pm2ranged)
                 {
-                    current_rules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, pm2val2, heightovr, subovr));
+                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, pm2val2, heightovr, subovr));
                 }
                 else if (pm1ranged && !pm2ranged)
                 {
                     int diff = pm2val1 + (pm1val2 - pm1val1);
-                    current_rules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, diff, heightovr, subovr));
+                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, diff, heightovr, subovr));
                 }
                 else
                 {
-                    current_rules.Add(new ByteIDConversionRule(pm1val1, pm2val1, -1, -1, heightovr, subovr));
+                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, -1, -1, heightovr, subovr));
                 }
                 pm1ranged = false;
                 pm2ranged = false;
             }
         }
 
-        private void parseConfigFile(string[] new_rules, List<StringIDConversionRule> current_rules)
+        private void ParseConfigFile(string[] new_rules, List<StringIDConversionRule> current_rules)
         {
             if (new_rules == null || new_rules.Length < 1 || current_rules == null) return;
             current_rules.Clear();
             foreach (string str in new_rules)
             {
-                string[] st = str.Split('|');
-                if (st.Length == 1) current_rules.Add(new StringIDConversionRule(st[0], null));
-                else if (st.Length >= 2) current_rules.Add(new StringIDConversionRule(st[0], st[1]));
+                string[] values = str.Split('|');
+                if (values.Length == 1) current_rules.Add(new StringIDConversionRule(values[0], null));
+                else if (values.Length >= 2) current_rules.Add(new StringIDConversionRule(values[0], values[1]));
             }
         }
 
-        private void parseConfigFile(string[] new_rules, List<SectionConversionRule> current_rules)
+        private void ParseConfigFile(string[] newRules, List<SectionConversionRule> currentRules)
         {
-            if (new_rules == null || new_rules.Length < 1 || current_rules == null) return;
-            current_rules.Clear();
-            foreach (string str in new_rules)
+            if (newRules == null || newRules.Length < 1 || currentRules == null) return;
+            currentRules.Clear();
+            foreach (string str in newRules)
             {
                 if (str == null || str.Length < 1) continue;
-                string[] vals = str.Split('|');
+                string[] values = str.Split('|');
                 string original_section = "";
                 string new_section = "";
                 string original_key = "";
                 string new_key = "";
                 string new_value = "";
-                if (vals.Length > 0)
+                if (values.Length > 0)
                 {
-                    if (vals[0].StartsWith("=")) vals[0] = vals[0].Substring(1, vals[0].Length-1);
-                    string[] sec = vals[0].Split('=');
+                    if (values[0].StartsWith("=")) values[0] = values[0].Substring(1, values[0].Length - 1);
+                    string[] sec = values[0].Split('=');
                     if (sec == null || sec.Length < 1) continue;
                     original_section = sec[0];
-                    if (sec.Length == 1 && vals[0].Contains('=') || sec.Length > 1 && vals[0].Contains('=') && String.IsNullOrEmpty(sec[1])) new_section = null;
+                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') && String.IsNullOrEmpty(sec[1])) new_section = null;
                     else if (sec.Length > 1) new_section = sec[1];
-                    if (vals.Length > 1)
+                    if (values.Length > 1)
                     {
-                        string[] key = vals[1].Split('=');
+                        string[] key = values[1].Split('=');
                         if (key != null && key.Length > 0)
                         {
                             original_key = key[0];
-                            if (key.Length == 1 && vals[1].Contains('=') || key.Length > 1 && vals[1].Contains('=') && String.IsNullOrEmpty(key[1])) new_key = null;
+                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') && String.IsNullOrEmpty(key[1])) new_key = null;
                             else if (key.Length > 1) new_key = key[1];
                         }
-                        if (vals.Length > 2)
+                        if (values.Length > 2)
                         {
-                            if (!(vals[2] == null || vals[2] == "" || vals[2] == "*"))
+                            if (!(values[2] == null || values[2] == "" || values[2] == "*"))
                             {
-                                if (vals[2].StartsWith("$GETVAL") && vals[2].Contains('(') && vals[2].Contains(')'))
+                                if (values[2].StartsWith("$GETVAL") && values[2].Contains('(') && values[2].Contains(')'))
                                 {
-                                    string[] valdata = Regex.Match(vals[2], @"\(([^)]*)\)").Groups[1].Value.Split(',');
+                                    string[] valdata = Regex.Match(values[2], @"\(([^)]*)\)").Groups[1].Value.Split(',');
                                     if (valdata.Length > 1)
                                     {
-                                        string newval = mapConfig.GetKey(valdata[0], valdata[1], null);
+                                        string newval = MapConfig.GetKey(valdata[0], valdata[1], null);
                                         if (newval != null) new_value = newval;
                                     }
                                 }
-                                else new_value = vals[2];
-                            } 
+                                else new_value = values[2];
+                            }
                         }
                     }
-                    current_rules.Add(new SectionConversionRule(original_section, new_section, original_key, new_key, new_value));
+                    currentRules.Add(new SectionConversionRule(original_section, new_section, original_key, new_key, new_value));
                 }
             }
         }
 
-        private bool parseMapPack()
+        private bool ParseMapPack()
         {
             Logger.Info("Parsing IsoMapPack5.");
             string data = "";
-            string[] tmp = mapConfig.GetValues("IsoMapPack5");
+            string[] tmp = MapConfig.GetValues("IsoMapPack5");
             if (tmp == null || tmp.Length < 1) return false;
-            data = concatStrings(tmp);
+            data = ConcatStrings(tmp);
             int cells;
             byte[] isoMapPack;
             try
             {
-                string size = mapConfig.GetKey("Map", "Size", "");
+                string size = MapConfig.GetKey("Map", "Size", "");
                 string[] st = size.Split(',');
-                map_Width = Convert.ToInt16(st[2]);
-                map_Height = Convert.ToInt16(st[3]);
+                Map_Width = Convert.ToInt16(st[2]);
+                Map_Height = Convert.ToInt16(st[3]);
                 byte[] lzoData = Convert.FromBase64String(data);
                 byte[] test = lzoData;
-                cells = (map_Width * 2 - 1) * map_Height;
+                cells = (Map_Width * 2 - 1) * Map_Height;
                 int lzoPackSize = cells * 11 + 4;
                 isoMapPack = new byte[lzoPackSize];
                 uint total_decompress_size = Format5.DecodeInto(lzoData, isoMapPack);
@@ -442,17 +443,17 @@ namespace MapTool
                 byte subtile = mf.ReadByte();
                 byte level = mf.ReadByte();
                 byte udata = mf.ReadByte();
-                int dx = rx - ry + map_FullWidth - 1;
-                int dy = rx + ry - map_FullWidth - 1;
-                isoMapPack5.Add(new MapTileContainer((short)rx, (short)ry, tilenum, subtile, level, udata));
+                int dx = rx - ry + Map_FullWidth - 1;
+                int dy = rx + ry - Map_FullWidth - 1;
+                IsoMapPack5.Add(new MapTileContainer((short)rx, (short)ry, tilenum, subtile, level, udata));
             }
             return true;
         }
 
         public void ConvertObjectData()
         {
-            if (!Initialized || overlayrules == null || objectrules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the object data."); return; }
+            if (!Initialized || OverlayRules == null || ObjectRules.Count < 1) return;
+            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the object data."); return; }
             Logger.Info("Attempting to modify object data of the map file.");
             ApplyObjectConversionRules("Aircraft");
             ApplyObjectConversionRules("Units");
@@ -461,28 +462,28 @@ namespace MapTool
             ApplyObjectConversionRules("Terrain");
         }
 
-        private void ApplyObjectConversionRules(string sectionname)
+        private void ApplyObjectConversionRules(string sectionName)
         {
-            if (String.IsNullOrEmpty(sectionname)) return;
-            KeyValuePair<string, string>[] kvps = mapConfig.GetKeyValuePairs(sectionname);
+            if (String.IsNullOrEmpty(sectionName)) return;
+            KeyValuePair<string, string>[] kvps = MapConfig.GetKeyValuePairs(sectionName);
             if (kvps == null) return;
             foreach (KeyValuePair<string, string> kvp in kvps)
             {
-                foreach (StringIDConversionRule rule in objectrules)
+                foreach (StringIDConversionRule rule in ObjectRules)
                 {
                     if (rule == null || rule.Original == null) continue;
                     if (MatchesRule(kvp.Value, rule.Original))
                     {
                         if (rule.New == null)
                         {
-                            Logger.Debug("Removed " + sectionname + " object with ID '" + rule.Original + "' from the map file.");
-                            mapConfig.RemoveKey(sectionname, kvp.Key);
+                            Logger.Debug("Removed " + sectionName + " object with ID '" + rule.Original + "' from the map file.");
+                            MapConfig.RemoveKey(sectionName, kvp.Key);
                             Altered = true;
                         }
                         else
                         {
-                            Logger.Debug("Replaced " + sectionname + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
-                            mapConfig.SetKey(sectionname, kvp.Key, kvp.Value.Replace(rule.Original, rule.New));
+                            Logger.Debug("Replaced " + sectionName + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
+                            MapConfig.SetKey(sectionName, kvp.Key, kvp.Value.Replace(rule.Original, rule.New));
                             Altered = true;
                         }
                     }
@@ -501,51 +502,51 @@ namespace MapTool
 
         public void ConvertSectionData()
         {
-            if (!Initialized || sectionrules == null || sectionrules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the section data."); return; }
+            if (!Initialized || SectionRules == null || SectionRules.Count < 1) return;
+            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the section data."); return; }
             Logger.Info("Attempting to modify section data of the map file.");
             ApplySectionConversionRules();
         }
 
         private void ApplySectionConversionRules()
         {
-            foreach (SectionConversionRule rule in sectionrules)
+            foreach (SectionConversionRule rule in SectionRules)
             {
-                if (String.IsNullOrEmpty(rule.Original_Section)) continue;
+                if (String.IsNullOrEmpty(rule.OriginalSection)) continue;
 
-                string currentSection = rule.Original_Section;
-                if (rule.New_Section == null)
+                string currentSection = rule.OriginalSection;
+                if (rule.NewSection == null)
                 {
-                    mapConfig.RemoveSection(rule.Original_Section);
+                    MapConfig.RemoveSection(rule.OriginalSection);
                     Altered = true;
                     continue;
                 }
-                else if (rule.New_Section != "")
+                else if (rule.NewSection != "")
                 {
-                    if (!mapConfig.SectionExists(rule.Original_Section)) mapConfig.AddSection(rule.New_Section);
-                    else mapConfig.RenameSection(rule.Original_Section, rule.New_Section);
+                    if (!MapConfig.SectionExists(rule.OriginalSection)) MapConfig.AddSection(rule.NewSection);
+                    else MapConfig.RenameSection(rule.OriginalSection, rule.NewSection);
                     Altered = true;
-                    currentSection = rule.New_Section;
+                    currentSection = rule.NewSection;
                 }
 
-                string currentKey = rule.Original_Key;
-                if (rule.New_Key == null)
+                string currentKey = rule.OriginalKey;
+                if (rule.NewKey == null)
                 {
-                    mapConfig.RemoveKey(currentSection, rule.Original_Key);
+                    MapConfig.RemoveKey(currentSection, rule.OriginalKey);
                     Altered = true;
                     continue;
                 }
-                else if (rule.New_Key != "")
+                else if (rule.NewKey != "")
                 {
-                    if (mapConfig.GetKey(currentSection, rule.Original_Key, null) == null) mapConfig.SetKey(currentSection, rule.New_Key, "");
-                    else mapConfig.RenameKey(currentSection, rule.Original_Key, rule.New_Key);
+                    if (MapConfig.GetKey(currentSection, rule.OriginalKey, null) == null) MapConfig.SetKey(currentSection, rule.NewKey, "");
+                    else MapConfig.RenameKey(currentSection, rule.OriginalKey, rule.NewKey);
                     Altered = true;
-                    currentKey = rule.New_Key;
+                    currentKey = rule.NewKey;
                 }
 
-                if (rule.New_Value != "")
+                if (rule.NewValue != "")
                 {
-                    mapConfig.SetKey(currentSection, currentKey, rule.New_Value);
+                    MapConfig.SetKey(currentSection, currentKey, rule.NewValue);
                     Altered = true;
                 }
             }
@@ -553,10 +554,10 @@ namespace MapTool
 
         public void ConvertOverlayData()
         {
-            if (!Initialized || overlayrules == null || overlayrules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the overlay data."); return; }
+            if (!Initialized || OverlayRules == null || OverlayRules.Count < 1) return;
+            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the overlay data."); return; }
 
-            parseOverlayPack();
+            ParseOverlayPack();
 
             Logger.Info("Attempting to modify overlay data of the map file.");
             ApplyOverlayConversionRules();
@@ -564,64 +565,64 @@ namespace MapTool
 
         private void ApplyOverlayConversionRules()
         {
-            for (int i = 0; i < Math.Min(overlayPack.Length, overlayDataPack.Length); i++)
+            for (int i = 0; i < Math.Min(OverlayPack.Length, OverlayDataPack.Length); i++)
             {
-                if (overlayPack[i] == 255) continue;
-                if (overlayPack[i] < 0 || overlayPack[i] > 255) overlayPack[i] = 0;
-                if (overlayDataPack[i] < 0 || overlayDataPack[i] > 255) overlayDataPack[i] = 0;
-                foreach (ByteIDConversionRule rule in overlayrules)
+                if (OverlayPack[i] == 255) continue;
+                if (OverlayPack[i] < 0 || OverlayPack[i] > 255) OverlayPack[i] = 0;
+                if (OverlayDataPack[i] < 0 || OverlayDataPack[i] > 255) OverlayDataPack[i] = 0;
+                foreach (ByteIDConversionRule rule in OverlayRules)
                 {
                     if (!rule.ValidForOverlays()) continue;
-                    if (overlayPack[i] >= rule.Original_Start && overlayPack[i] <= rule.Original_End)
+                    if (OverlayPack[i] >= rule.OriginalStartIndex && OverlayPack[i] <= rule.OriginalEndIndex)
                     {
-                        if (rule.New_End == rule.New_Start)
+                        if (rule.NewEndIndex == rule.NewStartIndex)
                         {
-                            Logger.Debug("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + rule.New_Start + "'.");
-                            overlayPack[i] = (byte)rule.New_Start;
+                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + rule.NewStartIndex + "'.");
+                            OverlayPack[i] = (byte)rule.NewStartIndex;
                             break;
                         }
                         else
                         {
-                            Logger.Debug("Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + (rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i])) + "'.");
-                            overlayPack[i] = (byte)(rule.New_Start + Math.Abs(rule.Original_Start - overlayPack[i]));
+                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i])) + "'.");
+                            OverlayPack[i] = (byte)(rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i]));
                             break;
                         }
                     }
                 }
             }
-            saveOverlayPack();
+            SaveOverlayPack();
         }
 
-        private void parseOverlayPack()
+        private void ParseOverlayPack()
         {
             Logger.Info("Parsing OverlayPack.");
-            string[] vals = mapConfig.GetValues("OverlayPack");
-            if (vals == null || vals.Length < 1) return;
-            byte[] format80Data = Convert.FromBase64String(concatStrings(vals));
-            var overlayPack = new byte[1 << 18];
-            Format5.DecodeInto(format80Data, overlayPack, 80);
+            string[] values = MapConfig.GetValues("OverlayPack");
+            if (values == null || values.Length < 1) return;
+            byte[] format80Data = Convert.FromBase64String(ConcatStrings(values));
+            var overlaypack = new byte[1 << 18];
+            Format5.DecodeInto(format80Data, overlaypack, 80);
 
             Logger.Info("Parsing OverlayDataPack.");
-            vals = mapConfig.GetValues("OverlayDataPack");
-            if (vals == null || vals.Length < 1) return;
-            format80Data = Convert.FromBase64String(concatStrings(vals));
-            var overlayDataPack = new byte[1 << 18];
-            Format5.DecodeInto(format80Data, overlayDataPack, 80);
+            values = MapConfig.GetValues("OverlayDataPack");
+            if (values == null || values.Length < 1) return;
+            format80Data = Convert.FromBase64String(ConcatStrings(values));
+            var overlaydatapack = new byte[1 << 18];
+            Format5.DecodeInto(format80Data, overlaydatapack, 80);
 
-            this.overlayPack = overlayPack;
-            this.overlayDataPack = overlayDataPack;
+            OverlayPack = overlaypack;
+            OverlayDataPack = overlaydatapack;
         }
 
-        private void saveOverlayPack()
+        private void SaveOverlayPack()
         {
-            string base64_overlayPack = Convert.ToBase64String(Format5.Encode(overlayPack, 80), Base64FormattingOptions.None);
-            string base64_overlayDataPack = Convert.ToBase64String(Format5.Encode(overlayDataPack, 80), Base64FormattingOptions.None);
-            overrideBase64MapSection("OverlayPack", base64_overlayPack);
-            overrideBase64MapSection("OverlayDataPack", base64_overlayDataPack);
+            string base64_overlayPack = Convert.ToBase64String(Format5.Encode(OverlayPack, 80), Base64FormattingOptions.None);
+            string base64_overlayDataPack = Convert.ToBase64String(Format5.Encode(OverlayDataPack, 80), Base64FormattingOptions.None);
+            OverrideBase64MapSection("OverlayPack", base64_overlayPack);
+            OverrideBase64MapSection("OverlayDataPack", base64_overlayDataPack);
             Altered = true;
         }
 
-        private void overrideBase64MapSection(string sectionName, string data)
+        private void OverrideBase64MapSection(string sectionName, string data)
         {
             //mapConfig.RemoveSection(sectionName);
             //mapConfig.AddSection(sectionName);
@@ -633,14 +634,14 @@ namespace MapTool
                 lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
                 //mapConfig.SetKey(sectionName, rownum++.ToString(CultureInfo.InvariantCulture), data.Substring(x, Math.Min(lx, data.Length - x)));
             }
-            mapConfig.ReplaceSectionValues(sectionName, lines);
+            MapConfig.ReplaceSectionValues(sectionName, lines);
         }
 
-        private string concatStrings(string[] Strings)
+        private string ConcatStrings(string[] strings)
         {
-            if (Strings == null || Strings.Length < 1) return null;
+            if (strings == null || strings.Length < 1) return null;
             var sb = new StringBuilder();
-            foreach (string v in Strings)
+            foreach (string v in strings)
                 sb.Append(v);
             return sb.ToString();
         }
@@ -648,16 +649,16 @@ namespace MapTool
 
         public void ListTileSetData()
         {
-            if (theaterConfig == null) return;
+            if (TheaterConfig == null) return;
 
-            TilesetCollection mtiles = TilesetCollection.ParseFromINIFile(theaterConfig);
+            TilesetCollection mtiles = TilesetCollection.ParseFromINIFile(TheaterConfig);
 
-            if (mtiles == null || mtiles.Count < 1) { Logger.Error("Could not parse tileset data from theater configuration file '" + theaterConfig.Filename + "'."); return; };
+            if (mtiles == null || mtiles.Count < 1) { Logger.Error("Could not parse tileset data from theater configuration file '" + TheaterConfig.Filename + "'."); return; };
 
-            Logger.Info("Attempting to list tileset data for a theater based on file: '" + theaterConfig.Filename + "'.");
+            Logger.Info("Attempting to list tileset data for a theater based on file: '" + TheaterConfig.Filename + "'.");
             List<string> lines = new List<string>();
             int tilecounter = 0;
-            lines.Add("Theater tileset data gathered from file '" + theaterConfig.Filename + "'.");
+            lines.Add("Theater tileset data gathered from file '" + TheaterConfig.Filename + "'.");
             lines.Add("");
             lines.Add("");
             foreach (Tileset ts in mtiles)
@@ -671,7 +672,7 @@ namespace MapTool
                 lines.Add("");
                 Logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " added to the list.");
             }
-            File.WriteAllLines(fileOutput, lines.ToArray());
+            File.WriteAllLines(FileOutput, lines.ToArray());
         }
 
 
@@ -679,12 +680,12 @@ namespace MapTool
         {
             if (UseMapOptimize)
             {
-                mapConfig.SetFirstAndLastSection("Basic", "Digest");
+                MapConfig.SetFirstAndLastSection("Basic", "Digest");
             }
-            mapConfig.Save(fileOutput, !UseMapCompress);
+            MapConfig.Save(FileOutput, !UseMapCompress);
         }
 
-        private string[] mergeKVP(KeyValuePair<string, string>[] keyValuePair)
+        private string[] MergeKVP(KeyValuePair<string, string>[] keyValuePair)
         {
             string[] result = new string[keyValuePair.Length];
             for (int i = 0; i < keyValuePair.Length; i++)
@@ -694,9 +695,9 @@ namespace MapTool
             return result;
         }
 
-        public static bool isValidTheatreName(string tname)
+        public static bool IsValidTheatreName(string theaterName)
         {
-            if (tname == "TEMPERATE" || tname == "SNOW" || tname == "LUNAR" || tname == "DESERT" || tname == "URBAN" || tname == "NEWURBAN") return true;
+            if (theaterName == "TEMPERATE" || theaterName == "SNOW" || theaterName == "LUNAR" || theaterName == "DESERT" || theaterName == "URBAN" || theaterName == "NEWURBAN") return true;
             return false;
         }
         public static bool ParseBool(string s, bool defval)
@@ -706,19 +707,19 @@ namespace MapTool
             else return defval;
         }
 
-        public static int ParseInt(string s, int defval)
+        public static int ParseInt(string str, int defaultValue)
         {
             try
             {
-                return Int32.Parse(s);
+                return Int32.Parse(str);
             }
             catch (Exception)
             {
-                return defval;
+                return defaultValue;
             }
         }
 
-        public static short shortFromBytes(byte b1, byte b2)
+        public static short ShortFromBytes(byte b1, byte b2)
         {
             byte[] b = new byte[] { b2, b1 };
             return BitConverter.ToInt16(b, 0);

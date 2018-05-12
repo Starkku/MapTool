@@ -25,22 +25,22 @@ namespace MapTool_UI
         private readonly string MapToolExecutable = "MapTool.exe";
         private readonly string ProfileDirectory = AppDomain.CurrentDomain.BaseDirectory + "Profiles";
 
-        private int hoveridx = -1;
-        private List<ListBoxProfile> profiles = new List<ListBoxProfile>();
-        private ListBoxProfile selectedprofile = null;
+        private int HoverIndex = -1;
+        private List<ListBoxProfile> Profiles = new List<ListBoxProfile>();
+        private ListBoxProfile SelectedProfile = null;
 
         private bool EnableWriteDebugLog = false;
 
         public MapTool_UI(string[] args)
         {
-            parseArguments(args);
-            checkExe();
-            loadProfiles();
+            ParseArguments(args);
+            CheckExe();
+            LoadProfiles();
             InitializeComponent();
-            listProfiles.DataSource = profiles;
+            listProfiles.DataSource = Profiles;
             Version v = Assembly.GetExecutingAssembly().GetName().Version;
             Text += " v." + v.ToString();
-            if (profiles.Count > 0 && listProfiles.SelectedIndex != -1) buttonEditProfile.Enabled = true;
+            if (Profiles.Count > 0 && listProfiles.SelectedIndex != -1) buttonEditProfile.Enabled = true;
             string ext1 = "", ext2 = "", delim = "", delim2 = "";
             for (int i = 0; i < ValidMapExts.Count; i++)
             {
@@ -57,7 +57,7 @@ namespace MapTool_UI
             }
         }
 
-        private void parseArguments(string[] args)
+        private void ParseArguments(string[] args)
         {
             foreach (string arg in args)
             {
@@ -72,7 +72,7 @@ namespace MapTool_UI
             }
         }
 
-        private void checkExe()
+        private void CheckExe()
         {
             if (!File.Exists(AppDomain.CurrentDomain.BaseDirectory + MapToolExecutable))
             {
@@ -82,21 +82,24 @@ namespace MapTool_UI
             }
         }
 
-        private void loadProfiles()
+        private void LoadProfiles()
         {
+            string[] files = new string[0];
             if (!Directory.Exists(ProfileDirectory))
             {
                 MessageBox.Show("Could not find the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
                 Close();
                 Environment.Exit(1);
             }
-
-            string[] files = Directory.GetFiles(ProfileDirectory, "*.ini", SearchOption.TopDirectoryOnly);
-            if (files.Length < 1)
+            else
             {
-                MessageBox.Show("Could not find any conversion profiles in the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
-                Close();
-                Environment.Exit(1);
+                files = Directory.GetFiles(ProfileDirectory, "*.ini", SearchOption.TopDirectoryOnly);
+                if (files.Length < 1)
+                {
+                    MessageBox.Show("Could not find any conversion profiles in the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+                    Close();
+                    Environment.Exit(1);
+                }
             }
             foreach (string s in files)
             {
@@ -104,18 +107,18 @@ namespace MapTool_UI
                 {
                     INIFile profile = new INIFile(s);
                     if (!profile.SectionExists("ProfileData")) continue;
-                    profiles.Add(new ListBoxProfile(s, profile.GetKey("ProfileData", "Name", Path.GetFileName(s)), profile.GetKey("ProfileData", "Description", "Description Not Available")));
+                    Profiles.Add(new ListBoxProfile(s, profile.GetKey("ProfileData", "Name", Path.GetFileName(s)), profile.GetKey("ProfileData", "Description", "Description Not Available")));
                 }
                 catch (Exception)
                 {
                     continue;
                 }
             }
-            profiles.Sort();
+            Profiles.Sort();
         }
 
         // Check if the filename is already on the list.
-        private bool checkIfDuplicate(string filename)
+        private bool CheckIfDuplicate(string filename)
         {
             foreach (ListBoxFile f in listFiles.Items)
             {
@@ -124,40 +127,40 @@ namespace MapTool_UI
             return false;
         }
 
-        private void deleteSelectedItems()
+        private void DeleteSelectedItems()
         {
             for (int i = listFiles.SelectedIndices.Count - 1; i >= 0; i--)
             {
                 listFiles.Items.RemoveAt(listFiles.SelectedIndices[i]);
             }
-            if (listFiles.Items.Count < 1 || selectedprofile == null) buttonConvert.Enabled = false;
+            if (listFiles.Items.Count < 1 || SelectedProfile == null) buttonConvert.Enabled = false;
             if (listFiles.Items.Count < 1) buttonSelect.Enabled = false;
         }
 
-        private void addMapFiles(string[] filenames)
+        private void AddMapFiles(string[] filenames)
         {
             ListBoxFile file;
             foreach (string filename in filenames)
             {
                 string ext = Path.GetExtension(filename);
                 if (!ValidMapExts.Contains(ext)) continue;
-                if (checkIfDuplicate(filename)) continue;
+                if (CheckIfDuplicate(filename)) continue;
                 file = new ListBoxFile(filename, Path.GetFileName(filename), filename);
                 listFiles.Items.Add(file);
             }
-            if (listFiles.Items.Count > 0 && selectedprofile != null) buttonConvert.Enabled = true;
+            if (listFiles.Items.Count > 0 && SelectedProfile != null) buttonConvert.Enabled = true;
             if (listFiles.Items.Count > 0) buttonSelect.Enabled = true;
         }
 
         // Drag & drop stuff.
-        private void listFiles_DragEnter(object sender, DragEventArgs e)
+        private void ListFiles_DragEnter(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
             else e.Effect = DragDropEffects.None;
         }
 
         // Add drag & dropped files into the list.
-        private void listFiles_DragDrop(object sender, DragEventArgs e)
+        private void ListFiles_DragDrop(object sender, DragEventArgs e)
         {
             List<string> filenames = new List<string>();
 
@@ -172,70 +175,70 @@ namespace MapTool_UI
                     filenames.Add(s);
                 }
             }
-            addMapFiles(filenames.ToArray());
+            AddMapFiles(filenames.ToArray());
         }
 
         // Show tooltips for the items displaying the full file path.
-        private void listFiles_MouseMove(object sender, MouseEventArgs e)
+        private void ListFiles_MouseMove(object sender, MouseEventArgs e)
         {
             int newhoveridx = listFiles.IndexFromPoint(e.Location);
 
-            if (hoveridx != newhoveridx)
+            if (HoverIndex != newhoveridx)
             {
-                hoveridx = newhoveridx;
-                if (hoveridx > -1)
+                HoverIndex = newhoveridx;
+                if (HoverIndex > -1)
                 {
                     toolTip.Active = false;
-                    ListBoxFile f = listFiles.Items[hoveridx] as ListBoxFile;
+                    ListBoxFile f = listFiles.Items[HoverIndex] as ListBoxFile;
                     toolTip.SetToolTip(listFiles, f.Tooltip);
                     toolTip.Active = true;
                 }
             }
         }
 
-        private void buttonRemove_Click(object sender, EventArgs e)
+        private void ButtonRemove_Click(object sender, EventArgs e)
         {
-            deleteSelectedItems();
+            DeleteSelectedItems();
         }
 
-        private void listFiles_KeyDown(object sender, KeyEventArgs e)
+        private void ListFiles_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Delete)
             {
-                deleteSelectedItems();
+                DeleteSelectedItems();
             }
         }
 
-        private void listFiles_SelectedValueChanged(object sender, EventArgs e)
+        private void ListFiles_SelectedValueChanged(object sender, EventArgs e)
         {
             if (listFiles.SelectedIndices.Count > 0) buttonRemove.Enabled = true;
             else buttonRemove.Enabled = false;
         }
 
-        private void buttonConvert_Click(object sender, EventArgs e)
+        private void ButtonConvert_Click(object sender, EventArgs e)
         {
             textBoxLogger.Text = "";
-            appendToLog("Processing maps.\r\n");
+            AppendToLog("Processing maps.\r\n");
             tabControl.SelectedIndex = 1;
             ThreadPool.QueueUserWorkItem(delegate (object state)
             {
-                toggleControlState(false);
+                ToggleControlState(false);
                 foreach (ListBoxFile f in listFiles.Items)
                 {
-                    processMap(f.FileName);
+                    ProcessMap(f.FileName);
                 }
-                toggleControlState(true);
-                appendToLog("Processed all maps.");
-                appendToLog("");
+                ToggleControlState(true);
+                AppendToLog("Processed all maps.");
+                AppendToLog("");
             });
         }
-        private void processMap(string filename)
+        private void ProcessMap(string filename)
         {
             string outputfilename = Path.GetDirectoryName(filename) + "\\" + Path.GetFileNameWithoutExtension(filename) + "_altered" + Path.GetExtension(filename);
             if (cbOverwrite.Checked) outputfilename = filename;
             string extra = "";
             //if (EnableWriteDebugLog) extra += " -log";
-            string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + selectedprofile.FileName + "\"" + extra;
+            string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + SelectedProfile.FileName + "\"" + extra;
 
             try
             {
@@ -252,33 +255,33 @@ namespace MapTool_UI
                 p.WaitForExit();
                 if (p.ExitCode == 0)
                 {
-                    appendToLog("");
-                    appendToLog("Successfully finished processing map '" + filename + "'.");
+                    AppendToLog("");
+                    AppendToLog("Successfully finished processing map '" + filename + "'.");
                 }
                 else
                 {
-                    appendToLog("");
-                    appendToLog("Processing on map '" + filename + "' failed.");
+                    AppendToLog("");
+                    AppendToLog("Processing on map '" + filename + "' failed.");
                 }
-                appendToLog("");
+                AppendToLog("");
             }
             catch (Exception e)
             {
-                appendToLog("Error encountered. Message: " + e.Message);
+                AppendToLog("Error encountered. Message: " + e.Message);
             }
         }
         private void ConsoleDataReceived(object sender, DataReceivedEventArgs e)
         {
-            appendToLog(e.Data);
+            AppendToLog(e.Data);
         }
 
         private delegate void LogDelegate(string s);
-        private void appendToLog(string s)
+        private void AppendToLog(string s)
         {
             if (s == null) return;
             if (InvokeRequired)
             {
-                Invoke(new LogDelegate(appendToLog), s);
+                Invoke(new LogDelegate(AppendToLog), s);
                 return;
             }
             textBoxLogger.AppendText(s + "\r\n");
@@ -289,11 +292,11 @@ namespace MapTool_UI
         }
 
         private delegate void ControlStateDelegate(bool enable);
-        private void toggleControlState(bool enable)
+        private void ToggleControlState(bool enable)
         {
             if (InvokeRequired)
             {
-                Invoke(new ControlStateDelegate(toggleControlState), enable);
+                Invoke(new ControlStateDelegate(ToggleControlState), enable);
                 return;
             }
             listFiles.Enabled = enable;
@@ -305,30 +308,30 @@ namespace MapTool_UI
         }
 
 
-        private void listProfiles_SelectedIndexChanged(object sender, EventArgs e)
+        private void ListProfiles_SelectedIndexChanged(object sender, EventArgs e)
         {
             try
             {
-                selectedprofile = profiles[listProfiles.SelectedIndex];
-                labelProfileDescription.Text = selectedprofile.Description;
+                SelectedProfile = Profiles[listProfiles.SelectedIndex];
+                labelProfileDescription.Text = SelectedProfile.Description;
             }
             catch (Exception)
             {
 
-                selectedprofile = null;
+                SelectedProfile = null;
             }
-            if (selectedprofile == null || listFiles.Items.Count < 1) buttonConvert.Enabled = false;
+            if (SelectedProfile == null || listFiles.Items.Count < 1) buttonConvert.Enabled = false;
         }
 
-        private void buttonBrowse_Click(object sender, EventArgs e)
+        private void ButtonBrowse_Click(object sender, EventArgs e)
         {
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                addMapFiles(openFileDialog.FileNames);
+                AddMapFiles(openFileDialog.FileNames);
             }
         }
 
-        private void buttonSelect_Click(object sender, EventArgs e)
+        private void ButtonSelect_Click(object sender, EventArgs e)
         {
             if (listFiles.SelectedIndices.Count > 0)
             {
@@ -343,9 +346,9 @@ namespace MapTool_UI
             }
         }
 
-        private void buttonEditProfile_Click(object sender, EventArgs e)
+        private void ButtonEditProfile_Click(object sender, EventArgs e)
         {
-            Process.Start(selectedprofile.FileName);
+            Process.Start(SelectedProfile.FileName);
         }
 
         private void MapFixer_KeyDown(object sender, KeyEventArgs e)
@@ -354,6 +357,21 @@ namespace MapTool_UI
             {
             }
 
+        }
+
+        private void LinkLabelAboutGithub_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start("https://github.com/Starkku/maptool");
+        }
+
+        private void LinkLabelAboutOpenRA_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start("https://github.com/OpenRA/OpenRA");
+        }
+
+        private void LinkLabelRenderer_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start("https://github.com/zzattack/ccmaps-net");
         }
     }
 

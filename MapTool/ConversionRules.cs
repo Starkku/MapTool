@@ -7,30 +7,28 @@
  * information, see COPYING.
  */
 
-using System.Collections.Generic;
-
 namespace MapTool
 {
     public enum SectionRuleType { Replace, Add, Remove };
     public class ByteIDConversionRule
     {
 
-        public int Original_Start
+        public int OriginalStartIndex
         {
             get;
             private set;
         }
-        public int Original_End
+        public int OriginalEndIndex
         {
             get;
             private set;
         }
-        public int New_Start
+        public int NewStartIndex
         {
             get;
             private set;
         }
-        public int New_End
+        public int NewEndIndex
         {
             get;
             private set;
@@ -40,30 +38,30 @@ namespace MapTool
             get;
             private set;
         }
-        public int SubIdxOverride
+        public int SubIndexOverride
         {
             get;
             private set;
         }
 
-        public ByteIDConversionRule(int original_start, int new_start, int original_end = -1, int new_end = -1, int heightovr = -1, int subtovr = -1)
+        public ByteIDConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex = -1, int newEndIndex = -1, int heightOverride = -1, int subIndexOverride = -1)
         {
-            Original_Start = original_start;
-            if (original_end < 0) Original_End = original_start;
-            else Original_End = original_end;
-            New_Start = new_start;
-            if (new_end < 0) New_End = new_start;
-            else New_End = new_end;
-            HeightOverride = heightovr;
-            SubIdxOverride = subtovr;
+            OriginalStartIndex = originalStartIndex;
+            if (originalEndIndex < 0) OriginalEndIndex = originalStartIndex;
+            else OriginalEndIndex = originalEndIndex;
+            NewStartIndex = newStartIndex;
+            if (newEndIndex < 0) NewEndIndex = newStartIndex;
+            else NewEndIndex = newEndIndex;
+            HeightOverride = heightOverride;
+            SubIndexOverride = subIndexOverride;
         }
 
         public bool ValidForOverlays()
         {
-            if (Original_Start > 254) return false;
-            else if (Original_End > 254) return false;
-            else if (New_Start > 255) return false;
-            else if (New_End > 255) return false;
+            if (OriginalStartIndex > 254) return false;
+            else if (OriginalEndIndex > 254) return false;
+            else if (NewStartIndex > 255) return false;
+            else if (NewEndIndex > 255) return false;
             return true;
         }
     }
@@ -91,38 +89,38 @@ namespace MapTool
 
     public class SectionConversionRule
     {
-        public string Original_Section
+        public string OriginalSection
         {
             get;
             private set;
         }
-        public string New_Section
+        public string NewSection
         {
             get;
             private set;
         }
-        public string Original_Key
+        public string OriginalKey
         {
             get;
             private set;
         }
-        public string New_Key
+        public string NewKey
         {
             get;
             private set;
         }
-        public string New_Value
+        public string NewValue
         {
             get;
             private set;
         }
-        public SectionConversionRule(string original_section, string new_section, string original_key, string new_key, string new_value)
+        public SectionConversionRule(string originalSection, string newSection, string originalKey, string newKey, string newValue)
         {
-            Original_Section = original_section;
-            New_Section = new_section;
-            Original_Key = original_key;
-            New_Key = new_key;
-            New_Value = new_value;
+            OriginalSection = originalSection;
+            NewSection = newSection;
+            OriginalKey = originalKey;
+            NewKey = newKey;
+            NewValue = newValue;
         }
     }
 }

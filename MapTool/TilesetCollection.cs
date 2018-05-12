@@ -9,7 +9,6 @@
 
 using System;
 using System.Collections;
-using StarkkuUtils.Tools;
 using StarkkuUtils.FileTypes;
 
 namespace MapTool
@@ -86,25 +85,26 @@ namespace MapTool
 
         #endregion
 
-        public static TilesetCollection ParseFromINIFile(INIFile theaterconfig)
+        public static TilesetCollection ParseFromINIFile(INIFile theaterConfig)
         {
             TilesetCollection tsc = new TilesetCollection();
             Tileset ts;
-            int tmp;
-            string[] sections = theaterconfig.GetSections();
+            string[] sections = theaterConfig.GetSections();
             foreach (string section in sections)
             {
                 if (!section.StartsWith("TileSet")) continue;
-                ts = new Tileset();
-                ts.SetID = section;
-                Int32.TryParse(section.Substring(7, 4), out tmp);
+                ts = new Tileset
+                {
+                    SetID = section
+                };
+                Int32.TryParse(section.Substring(7, 4), out int tmp);
                 ts.SetNumber = tmp;
-                ts.SetName = theaterconfig.GetKey(section, "SetName", null);
-                ts.FileName = theaterconfig.GetKey(section, "FileName", null);
+                ts.SetName = theaterConfig.GetKey(section, "SetName", null);
+                ts.FileName = theaterConfig.GetKey(section, "FileName", null);
                 if (ts.FileName != null) ts.FileName = ts.FileName.ToLower();
                 try
                 {
-                    ts.TilesInSet = GetInt(theaterconfig.GetKey(section, "TilesInSet", "N/A"));
+                    ts.TilesInSet = GetInt(theaterConfig.GetKey(section, "TilesInSet", "N/A"));
                 }
                 catch (Exception)
                 {
@@ -150,13 +150,13 @@ namespace MapTool
             TilesInSet = tilesinset;
         }
 
-        public string[] getPrintableData(ref int tilecounter)
+        public string[] getPrintableData(ref int tileCounter)
         {
             string[] data = new string[4];
             data[0] = SetID + " | " + SetName;
             data[1] = "Filename: " + FileName;
             data[2] = "Number of tiles: " + TilesInSet;
-            data[3] = "Range: " + tilecounter.ToString() + "-" + ((tilecounter += TilesInSet) - 1).ToString();
+            data[3] = "Range: " + tileCounter.ToString() + "-" + ((tileCounter += TilesInSet) - 1).ToString();
             return data;
         }
     }

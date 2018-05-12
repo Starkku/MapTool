@@ -37,7 +37,6 @@ namespace MapTool_UI
         /// </summary>
         private void InitializeComponent()
         {
-            this.Icon = Properties.Resources.Icon;
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MapTool_UI));
             this.labelInfo = new System.Windows.Forms.Label();
@@ -58,9 +57,18 @@ namespace MapTool_UI
             this.tabPageMain = new System.Windows.Forms.TabPage();
             this.tabPageLogger = new System.Windows.Forms.TabPage();
             this.textBoxLogger = new System.Windows.Forms.RichTextBox();
+            this.tabPageAbout = new System.Windows.Forms.TabPage();
+            this.linkLabelRenderer = new System.Windows.Forms.LinkLabel();
+            this.linkLabelAboutOpenRA = new System.Windows.Forms.LinkLabel();
+            this.labelAboutOSCode = new System.Windows.Forms.Label();
+            this.linkLabelAboutGithub = new System.Windows.Forms.LinkLabel();
+            this.labelAboutCopyright = new System.Windows.Forms.Label();
+            this.labelSpecialThanks = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
             this.tabControl.SuspendLayout();
             this.tabPageMain.SuspendLayout();
             this.tabPageLogger.SuspendLayout();
+            this.tabPageAbout.SuspendLayout();
             this.SuspendLayout();
             // 
             // labelInfo
@@ -83,11 +91,11 @@ namespace MapTool_UI
             this.listFiles.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
             this.listFiles.Size = new System.Drawing.Size(268, 95);
             this.listFiles.TabIndex = 1;
-            this.listFiles.SelectedValueChanged += new System.EventHandler(this.listFiles_SelectedValueChanged);
-            this.listFiles.DragDrop += new System.Windows.Forms.DragEventHandler(this.listFiles_DragDrop);
-            this.listFiles.DragEnter += new System.Windows.Forms.DragEventHandler(this.listFiles_DragEnter);
-            this.listFiles.KeyDown += new System.Windows.Forms.KeyEventHandler(this.listFiles_KeyDown);
-            this.listFiles.MouseMove += new System.Windows.Forms.MouseEventHandler(this.listFiles_MouseMove);
+            this.listFiles.SelectedValueChanged += new System.EventHandler(this.ListFiles_SelectedValueChanged);
+            this.listFiles.DragDrop += new System.Windows.Forms.DragEventHandler(this.ListFiles_DragDrop);
+            this.listFiles.DragEnter += new System.Windows.Forms.DragEventHandler(this.ListFiles_DragEnter);
+            this.listFiles.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ListFiles_KeyDown);
+            this.listFiles.MouseMove += new System.Windows.Forms.MouseEventHandler(this.ListFiles_MouseMove);
             // 
             // buttonBrowse
             // 
@@ -97,7 +105,7 @@ namespace MapTool_UI
             this.buttonBrowse.TabIndex = 2;
             this.buttonBrowse.Text = "Browse...";
             this.buttonBrowse.UseVisualStyleBackColor = true;
-            this.buttonBrowse.Click += new System.EventHandler(this.buttonBrowse_Click);
+            this.buttonBrowse.Click += new System.EventHandler(this.ButtonBrowse_Click);
             // 
             // buttonRemove
             // 
@@ -108,7 +116,7 @@ namespace MapTool_UI
             this.buttonRemove.TabIndex = 3;
             this.buttonRemove.Text = "Remove Selected";
             this.buttonRemove.UseVisualStyleBackColor = true;
-            this.buttonRemove.Click += new System.EventHandler(this.buttonRemove_Click);
+            this.buttonRemove.Click += new System.EventHandler(this.ButtonRemove_Click);
             // 
             // buttonConvert
             // 
@@ -119,7 +127,7 @@ namespace MapTool_UI
             this.buttonConvert.TabIndex = 5;
             this.buttonConvert.Text = "Process Maps";
             this.buttonConvert.UseVisualStyleBackColor = true;
-            this.buttonConvert.Click += new System.EventHandler(this.buttonConvert_Click);
+            this.buttonConvert.Click += new System.EventHandler(this.ButtonConvert_Click);
             // 
             // cbOverwrite
             // 
@@ -139,7 +147,7 @@ namespace MapTool_UI
             this.listProfiles.Name = "listProfiles";
             this.listProfiles.Size = new System.Drawing.Size(268, 95);
             this.listProfiles.TabIndex = 7;
-            this.listProfiles.SelectedIndexChanged += new System.EventHandler(this.listProfiles_SelectedIndexChanged);
+            this.listProfiles.SelectedIndexChanged += new System.EventHandler(this.ListProfiles_SelectedIndexChanged);
             // 
             // labelListFiles
             // 
@@ -180,7 +188,7 @@ namespace MapTool_UI
             this.buttonSelect.TabIndex = 11;
             this.buttonSelect.Text = "Select/Deselect All";
             this.buttonSelect.UseVisualStyleBackColor = true;
-            this.buttonSelect.Click += new System.EventHandler(this.buttonSelect_Click);
+            this.buttonSelect.Click += new System.EventHandler(this.ButtonSelect_Click);
             // 
             // buttonEditProfile
             // 
@@ -192,12 +200,13 @@ namespace MapTool_UI
             this.buttonEditProfile.Text = "Edit Profile";
             this.buttonEditProfile.UseVisualStyleBackColor = true;
             this.buttonEditProfile.Visible = false;
-            this.buttonEditProfile.Click += new System.EventHandler(this.buttonEditProfile_Click);
+            this.buttonEditProfile.Click += new System.EventHandler(this.ButtonEditProfile_Click);
             // 
             // tabControl
             // 
             this.tabControl.Controls.Add(this.tabPageMain);
             this.tabControl.Controls.Add(this.tabPageLogger);
+            this.tabControl.Controls.Add(this.tabPageAbout);
             this.tabControl.Location = new System.Drawing.Point(0, 0);
             this.tabControl.Name = "tabControl";
             this.tabControl.SelectedIndex = 0;
@@ -248,12 +257,102 @@ namespace MapTool_UI
             this.textBoxLogger.TabIndex = 0;
             this.textBoxLogger.Text = "";
             // 
+            // tabPageAbout
+            // 
+            this.tabPageAbout.Controls.Add(this.label1);
+            this.tabPageAbout.Controls.Add(this.labelSpecialThanks);
+            this.tabPageAbout.Controls.Add(this.linkLabelRenderer);
+            this.tabPageAbout.Controls.Add(this.linkLabelAboutOpenRA);
+            this.tabPageAbout.Controls.Add(this.labelAboutOSCode);
+            this.tabPageAbout.Controls.Add(this.linkLabelAboutGithub);
+            this.tabPageAbout.Controls.Add(this.labelAboutCopyright);
+            this.tabPageAbout.Location = new System.Drawing.Point(4, 22);
+            this.tabPageAbout.Name = "tabPageAbout";
+            this.tabPageAbout.Size = new System.Drawing.Size(419, 392);
+            this.tabPageAbout.TabIndex = 2;
+            this.tabPageAbout.Text = "About";
+            this.tabPageAbout.UseVisualStyleBackColor = true;
+            // 
+            // linkLabelRenderer
+            // 
+            this.linkLabelRenderer.AutoSize = true;
+            this.linkLabelRenderer.LinkArea = new System.Windows.Forms.LinkArea(18, 38);
+            this.linkLabelRenderer.Location = new System.Drawing.Point(8, 94);
+            this.linkLabelRenderer.Name = "linkLabelRenderer";
+            this.linkLabelRenderer.Size = new System.Drawing.Size(311, 17);
+            this.linkLabelRenderer.TabIndex = 4;
+            this.linkLabelRenderer.TabStop = true;
+            this.linkLabelRenderer.Text = "CnCMaps Renderer (https://github.com/zzattack/ccmaps-net)";
+            this.linkLabelRenderer.UseCompatibleTextRendering = true;
+            this.linkLabelRenderer.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabelRenderer_LinkClicked);
+            // 
+            // linkLabelAboutOpenRA
+            // 
+            this.linkLabelAboutOpenRA.AutoSize = true;
+            this.linkLabelAboutOpenRA.LinkArea = new System.Windows.Forms.LinkArea(10, 32);
+            this.linkLabelAboutOpenRA.Location = new System.Drawing.Point(8, 114);
+            this.linkLabelAboutOpenRA.Name = "linkLabelAboutOpenRA";
+            this.linkLabelAboutOpenRA.Size = new System.Drawing.Size(248, 17);
+            this.linkLabelAboutOpenRA.TabIndex = 3;
+            this.linkLabelAboutOpenRA.TabStop = true;
+            this.linkLabelAboutOpenRA.Text = "OpenRA - (https://github.com/OpenRA/OpenRA)";
+            this.linkLabelAboutOpenRA.UseCompatibleTextRendering = true;
+            this.linkLabelAboutOpenRA.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabelAboutOpenRA_LinkClicked);
+            // 
+            // labelAboutOSCode
+            // 
+            this.labelAboutOSCode.AutoSize = true;
+            this.labelAboutOSCode.Location = new System.Drawing.Point(8, 74);
+            this.labelAboutOSCode.Name = "labelAboutOSCode";
+            this.labelAboutOSCode.Size = new System.Drawing.Size(296, 13);
+            this.labelAboutOSCode.TabIndex = 2;
+            this.labelAboutOSCode.Text = "Code from following open-source projects is used in MapTool:";
+            // 
+            // linkLabelAboutGithub
+            // 
+            this.linkLabelAboutGithub.AutoSize = true;
+            this.linkLabelAboutGithub.Location = new System.Drawing.Point(8, 36);
+            this.linkLabelAboutGithub.Name = "linkLabelAboutGithub";
+            this.linkLabelAboutGithub.Size = new System.Drawing.Size(100, 13);
+            this.linkLabelAboutGithub.TabIndex = 1;
+            this.linkLabelAboutGithub.TabStop = true;
+            this.linkLabelAboutGithub.Text = "MapTool on GitHub";
+            this.linkLabelAboutGithub.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabelAboutGithub_LinkClicked);
+            // 
+            // labelAboutCopyright
+            // 
+            this.labelAboutCopyright.AutoSize = true;
+            this.labelAboutCopyright.Location = new System.Drawing.Point(8, 16);
+            this.labelAboutCopyright.Name = "labelAboutCopyright";
+            this.labelAboutCopyright.Size = new System.Drawing.Size(166, 13);
+            this.labelAboutCopyright.TabIndex = 0;
+            this.labelAboutCopyright.Text = "Program by Starkku © 2017-2018";
+            // 
+            // labelSpecialThanks
+            // 
+            this.labelSpecialThanks.AutoSize = true;
+            this.labelSpecialThanks.Location = new System.Drawing.Point(8, 146);
+            this.labelSpecialThanks.Name = "labelSpecialThanks";
+            this.labelSpecialThanks.Size = new System.Drawing.Size(182, 13);
+            this.labelSpecialThanks.TabIndex = 5;
+            this.labelSpecialThanks.Text = "Additional thanks to following people:";
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(11, 166);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(340, 13);
+            this.label1.TabIndex = 6;
+            this.label1.Text = "E1 Elite (created several TS conversion profiles included with releases)";
+            // 
             // MapTool_UI
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(421, 415);
             this.Controls.Add(this.tabControl);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.Icon = global::MapTool_UI.Properties.Resources.Icon;
             this.KeyPreview = true;
             this.MaximizeBox = false;
             this.Name = "MapTool_UI";
@@ -265,6 +364,8 @@ namespace MapTool_UI
             this.tabPageMain.ResumeLayout(false);
             this.tabPageMain.PerformLayout();
             this.tabPageLogger.ResumeLayout(false);
+            this.tabPageAbout.ResumeLayout(false);
+            this.tabPageAbout.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -289,6 +390,14 @@ namespace MapTool_UI
         private System.Windows.Forms.TabPage tabPageMain;
         private System.Windows.Forms.TabPage tabPageLogger;
         private System.Windows.Forms.RichTextBox textBoxLogger;
+        private System.Windows.Forms.TabPage tabPageAbout;
+        private System.Windows.Forms.LinkLabel linkLabelAboutGithub;
+        private System.Windows.Forms.Label labelAboutCopyright;
+        private System.Windows.Forms.LinkLabel linkLabelAboutOpenRA;
+        private System.Windows.Forms.Label labelAboutOSCode;
+        private System.Windows.Forms.LinkLabel linkLabelRenderer;
+        private System.Windows.Forms.Label labelSpecialThanks;
+        private System.Windows.Forms.Label label1;
     }
 }
 
