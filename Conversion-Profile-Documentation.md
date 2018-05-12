@@ -6,41 +6,53 @@ Users unfamiliar with structure of INI files should use one of the pre-made prof
 
 ## Available Sections
 
-
 ### ProfileData
 
 #### Name
+
 Name displayed in the GUI for this profile.
 
 #### Description
+
 Description displayed in the GUI for this profile.
 
 #### IncludeFiles
+
 A comma-separated list of filenames including file extensions to read from *same directory as the current conversion profile*. Contents of these files will be merged with the current one. This only works on one level, so trying to include files from already included files will fail.
 
 #### ApplyMapOptimization
-If set to yes/true, will ensure that on the saved map, section with name 'Basic' will be the first section and section with name 'Digest' will be the last. This potentially allows for game to find these particular sections marginally faster.
+
+If set to yes/true, will ensure that on the saved map, section with name **MultiplayerDialogSettings** will be the first section, immediately followed by section with name **Basic** and finally the section with name **Digest** will be the last. This potentially allows for game to find these particular sections marginally faster.
 
 #### ApplyMapCompress
+
 If set to yes/true, no unnecessary white space is put on the saved map. This allows for map size to be marginally smaller.
 
 ### TheaterRules
 
 #### ApplicableTheaters
-A comma-separated list of theater ID's which must match with one declared in a map for the tool to process it. Defaults to <pre>ApplicableTheaters=TEMPERATE,SNOW,URBAN,DESERT,NEWURBAN,LUNAR</pre> if a list is omitted.
 
-### NewTheater
+A comma-separated list of theater ID's which must match with one declared in a map for the tool to process it. Defaults to **TEMPERATE,SNOW,URBAN,DESERT,NEWURBAN,LUNAR** the list is omitted.
+
+#### NewTheater
+
 A single theater ID which is assigned on any processed maps. If omitted, defaults to processed map's theater.
 
 ### IsoMapPack5
-By sorting the tiles used in IsoMapPack5, results in better compression. Effects of both SortBy and RemoveLevel0ClearTiles are reversible when a map is opened and saved in the map editors (Final Alert 2 / FinalSun).
+
+Do note that effects of both SortBy and RemoveLevel0ClearTiles are removed when a map is opened and saved in a map editor (Final Alert 2 / FinalSun).
 
 #### SortBy
-Sort the tiles by any of the following - X, Y, TILEINDEX, SUBTILEINDEX, LEVEL, UDATA, X_LEVEL_TILEINDEX (Sort by X then by LEVEL then by TILEINDEX) likewise X_TILEINDEX_LEVEL, LEVEL_X_TILEINDEX and TILEINDEX_X_LEVEL.
-Good compression is achieved by these - X_LEVEL_TILEINDEX and X_TILEINDEX_LEVEL.
+
+Allows for sorting of tile data in IsoMapPack5, resulting in potentially better compression.
+
+Sorting by following values is available: **X, Y, TILEINDEX, SUBTILEINDEX, LEVEL, UDATA, X\_LEVEL\_TILEINDEX** (Sort by X then by LEVEL then by TILEINDEX - the remaining ones follow a similar pattern)**, X\_TILEINDEX\_LEVEL, LEVEL\_X\_TILEINDEX,TILEINDEX\_X\_LEVEL**.
+
+Good compression is achieved by using either **X\_LEVEL\_TILEINDEX** or **X\_TILEINDEX\_LEVEL**.
 
 #### RemoveLevel0ClearTiles
-When a tile is not found for a given cell, the game automatically fills it up with a Level 0 Clear tile. Taking advantage of this feature, those Level 0 clear tiles could be removed from the tileset to reduce the size of IsoMapPack5. This field takes a boolean value of yes/no.
+
+If set to yes/true, removes all clear tiles at lowest elevation level (0). Since game always fills cells that are missing tiles with clear tiles that have elevation level of 0, removing them from IsoMapPack5 is a way to trim down the size of a map file.
 
 ### TileRules
 
