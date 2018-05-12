@@ -12,7 +12,7 @@ Downloads:
 
 ## Installation
 
-As of current, MapTool only runs on Windows operating systems, with Microsoft .NET Framework 4.0 as a requirement. Installation is simple, just place all of the required program files in a directory of your choice, and run it from there. 
+As of current, MapTool has been designed to run on Windows operating systems, with Microsoft .NET Framework 4.0 as a requirement. Installation is simple, just place all of the required program files in a directory of your choice, and run it from there. 
 
 ## Usage
 
