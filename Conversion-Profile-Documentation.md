@@ -30,8 +30,17 @@ If set to yes/true, no unnecessary white space is put on the saved map. This all
 A comma-separated list of theater ID's which must match with one declared in a map for the tool to process it. Defaults to <pre>ApplicableTheaters=TEMPERATE,SNOW,URBAN,DESERT,NEWURBAN,LUNAR</pre> if a list is omitted.
 
 ### NewTheater
-A single theater ID which is assigned on any processed maps.
+A single theater ID which is assigned on any processed maps. If omitted, defaults to processed map's theater.
 
+### IsoMapPack5
+By sorting the tiles used in IsoMapPack5, results in better compression. Effects of both SortBy and RemoveLevel0ClearTiles are reversible when a map is opened and saved in the map editors (Final Alert 2 / FinalSun).
+
+#### SortBy
+Sort the tiles by any of the following - X, Y, TILEINDEX, SUBTILEINDEX, LEVEL, UDATA, X_LEVEL_TILEINDEX (Sort by X then by LEVEL then by TILEINDEX) likewise X_TILEINDEX_LEVEL, LEVEL_X_TILEINDEX and TILEINDEX_X_LEVEL.
+Good compression is achieved by these - X_LEVEL_TILEINDEX and X_TILEINDEX_LEVEL.
+
+#### RemoveLevel0ClearTiles
+When a tile is not found for a given cell, the game automatically fills it up with a Level 0 Clear tile. Taking advantage of this feature, those Level 0 clear tiles could be removed from the tileset to reduce the size of IsoMapPack5. This field takes a boolean value of yes/no.
 
 ### TileRules
 
