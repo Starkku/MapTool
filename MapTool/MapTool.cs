@@ -62,7 +62,7 @@ namespace MapTool
         private string IsoMapPack5SortBy = null;
         private bool RemoveLevel0ClearTiles = false;
 
-        INIFile TheaterConfig;                                                            // Theater config INI file.
+        private INIFile TheaterConfig;                                                            // Theater config INI file.
 
         public MapTool(string inputFile, string outputFile, string fileConfig = null, bool list = false)
         {
