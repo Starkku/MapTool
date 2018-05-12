@@ -215,8 +215,6 @@ namespace MapTool
                 {
                     l = r.OriginalStartIndex;
                     h = r.OriginalEndIndex;
-                    if (t.X == 122 && t.Y == 26)
-                        t.UData = 0;
                     if (t.TileIndex >= l && t.TileIndex <= h)
                     {
                         if (r.HeightOverride >= 0)
