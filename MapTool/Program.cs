@@ -45,7 +45,7 @@ namespace MapTool
                 ShowHelp();
                 return;
             }
-            initLogger(settings.DebugLogging);
+            InitLogger(settings.DebugLogging);
 
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
@@ -130,7 +130,11 @@ namespace MapTool
             Environment.Exit(1);
         }
 
-        private static void initLogger(bool writefile = false)
+        /// <summary>
+        /// Initializes the logger.
+        /// </summary>
+        /// <param name="writefile">Set to yes to write a log file.</param>
+        private static void InitLogger(bool writefile = false)
         {
             string filename = AppDomain.CurrentDomain.BaseDirectory + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) + ".log";
             bool enabledebug = false;
@@ -140,6 +144,9 @@ namespace MapTool
             Logger.Initialize(filename, writefile, enabledebug);
         }
 
+        /// <summary>
+        /// Shows help for command line arguments.
+        /// </summary>
         private static void ShowHelp()
         {
             Console.ForegroundColor = ConsoleColor.Gray;

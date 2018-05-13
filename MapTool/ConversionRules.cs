@@ -10,9 +10,9 @@
 namespace MapTool
 {
     public enum SectionRuleType { Replace, Add, Remove };
+
     public class ByteIDConversionRule
     {
-
         public int OriginalStartIndex
         {
             get;

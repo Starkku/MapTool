@@ -64,14 +64,21 @@ namespace MapTool
 
         private INIFile TheaterConfig;                                                            // Theater config INI file.
 
-        public MapTool(string inputFile, string outputFile, string fileConfig = null, bool list = false)
+        /// <summary>
+        /// Initializes a new instance of MapTool.
+        /// </summary>
+        /// <param name="inputFile">Input file name.</param>
+        /// <param name="outputFile">Output file name.</param>
+        /// <param name="fileConfig">Conversion profile file name.</param>
+        /// <param name="listTheaterData">If set, it is assumed that this instance of MapTool is initialized for listing theater data rather than processing maps.</param>
+        public MapTool(string inputFile, string outputFile, string fileConfig, bool listTheaterData)
         {
             Initialized = false;
             Altered = false;
             FileInput = inputFile;
             FileOutput = outputFile;
 
-            if (list && !String.IsNullOrEmpty(FileInput))
+            if (listTheaterData && !String.IsNullOrEmpty(FileInput))
             {
                 TheaterConfig = new INIFile(FileInput);
                 if (!TheaterConfig.Initialized)
@@ -136,7 +143,7 @@ namespace MapTool
                     if (ProfileConfig.SectionExists("TileRules")) tilerules = ProfileConfig.GetValues("TileRules");
                     if (ProfileConfig.SectionExists("OverlayRules")) overlayrules = ProfileConfig.GetValues("OverlayRules");
                     if (ProfileConfig.SectionExists("ObjectRules")) objectrules = ProfileConfig.GetValues("ObjectRules");
-                    if (ProfileConfig.SectionExists("SectionRules")) sectionrules = MergeKVP(ProfileConfig.GetKeyValuePairs("SectionRules"));
+                    if (ProfileConfig.SectionExists("SectionRules")) sectionrules = MergeKeyValuePairs(ProfileConfig.GetKeyValuePairs("SectionRules"));
 
                     NewTheater = ProfileConfig.GetKey("TheaterRules", "NewTheater", null);
                     if (NewTheater != null)
@@ -161,7 +168,7 @@ namespace MapTool
                         ApplicableTheaters.AddRange(new string[] { "TEMPERATE", "SNOW", "URBAN", "DESERT", "LUNAR", "NEWURBAN" });
 
                     // Allow saving map without any other changes if either of these are set and ApplicableTheaters allows it.
-                    if ((UseMapCompress || UseMapOptimize) && AllowProcessing()) Altered = true;
+                    if ((UseMapCompress || UseMapOptimize) && IsCurrentTheaterAllowed()) Altered = true;
 
                     if (!Altered && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null && NewTheater == null)
                     {
@@ -179,22 +186,328 @@ namespace MapTool
             Initialized = true;
         }
 
-        private bool AllowProcessing()
+        /// <summary>
+        /// Saves the map file.
+        /// </summary>
+        public void Save()
+        {
+            if (UseMapOptimize)
+            {
+                Logger.Info("ApplyMapOptimization set: Saved map will have map section order optimizations applied.");
+                MapConfig.MoveSectionToFirst("Basic");
+                MapConfig.MoveSectionToFirst("MultiplayerDialogSettings");
+                MapConfig.MoveSectionToLast("Digest");
+            }
+            if (UseMapCompress)
+                Logger.Info("ApplyMapCompress set: Saved map will have no unnecessary whitespaces.");
+            MapConfig.Save(FileOutput, !UseMapCompress);
+        }
+
+        /// <summary>
+        /// Checks if theater name is valid.
+        /// </summary>
+        /// <param name="theaterName">Theater name.</param>
+        /// <returns>True if a valid theater name, otherwise false.</returns>
+        public static bool IsValidTheaterName(string theaterName)
+        {
+            if (theaterName == "TEMPERATE" || theaterName == "SNOW" || theaterName == "LUNAR" || theaterName == "DESERT" || theaterName == "URBAN" || theaterName == "NEWURBAN") return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if the currently set map theater exists in current list of theaters the map tool is allowed to process.
+        /// </summary>
+        /// <returns>True if map theater exists in applicable theaters, otherwise false.</returns>
+        private bool IsCurrentTheaterAllowed()
         {
             if (ApplicableTheaters == null || MapTheater == null || !ApplicableTheaters.Contains(MapTheater)) return false;
             return true;
         }
 
+        /// <summary>
+        /// Parses IsoMapPack5 section of the map file.
+        /// </summary>
+        /// <returns>True if success, otherwise false.</returns>
+        private bool ParseMapPack()
+        {
+            Logger.Info("Parsing IsoMapPack5.");
+            string data = "";
+            string[] tmp = MapConfig.GetValues("IsoMapPack5");
+            if (tmp == null || tmp.Length < 1) return false;
+            data = String.Join("", tmp);
+            int cells;
+            byte[] isoMapPack;
+            try
+            {
+                string size = MapConfig.GetKey("Map", "Size", "");
+                string[] st = size.Split(',');
+                Map_Width = Convert.ToInt16(st[2]);
+                Map_Height = Convert.ToInt16(st[3]);
+                byte[] lzoData = Convert.FromBase64String(data);
+                byte[] test = lzoData;
+                cells = (Map_Width * 2 - 1) * Map_Height;
+                int lzoPackSize = cells * 11 + 4;
+                isoMapPack = new byte[lzoPackSize];
+                // Fill up and filter later
+                int j = 0;
+                for (int i = 0; i < cells; i++)
+                {
+                    isoMapPack[j] = 0x88;
+                    isoMapPack[j + 1] = 0x40;
+                    isoMapPack[j + 2] = 0x88;
+                    isoMapPack[j + 3] = 0x40;
+                    j += 11;
+                }
+                uint total_decompress_size = Format5.DecodeInto(lzoData, isoMapPack);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            MemoryFile mf = new MemoryFile(isoMapPack);
+            for (int i = 0; i < cells; i++)
+            {
+                ushort rx = mf.ReadUInt16();
+                ushort ry = mf.ReadUInt16();
+                int tilenum = mf.ReadInt32();
+                byte subtile = mf.ReadByte();
+                byte level = mf.ReadByte();
+                byte udata = mf.ReadByte();
+                int dx = rx - ry + Map_FullWidth - 1;
+                int dy = rx + ry - Map_FullWidth - 1;
+                if (rx > 0 && ry > 0 && rx <= 16384 && ry <= 16384)
+                {
+                    IsoMapPack5.Add(new MapTileContainer((short)rx, (short)ry, tilenum, subtile, level, udata));
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Parses Overlay(Data)Pack section(s) of the map file.
+        /// </summary>
+        private void ParseOverlayPack()
+        {
+            Logger.Info("Parsing OverlayPack.");
+            string[] values = MapConfig.GetValues("OverlayPack");
+            if (values == null || values.Length < 1) return;
+            byte[] format80Data = Convert.FromBase64String(String.Join("",values));
+            var overlaypack = new byte[1 << 18];
+            Format5.DecodeInto(format80Data, overlaypack, 80);
+
+            Logger.Info("Parsing OverlayDataPack.");
+            values = MapConfig.GetValues("OverlayDataPack");
+            if (values == null || values.Length < 1) return;
+            format80Data = Convert.FromBase64String(String.Join("", values));
+            var overlaydatapack = new byte[1 << 18];
+            Format5.DecodeInto(format80Data, overlaydatapack, 80);
+
+            OverlayPack = overlaypack;
+            OverlayDataPack = overlaydatapack;
+        }
+
+        /// <summary>
+        /// Saves Overlay(Data)Pack section(s) of the map file.
+        /// </summary>
+        private void SaveOverlayPack()
+        {
+            string base64_overlayPack = Convert.ToBase64String(Format5.Encode(OverlayPack, 80), Base64FormattingOptions.None);
+            string base64_overlayDataPack = Convert.ToBase64String(Format5.Encode(OverlayDataPack, 80), Base64FormattingOptions.None);
+            OverrideBase64MapSection("OverlayPack", base64_overlayPack);
+            OverrideBase64MapSection("OverlayDataPack", base64_overlayDataPack);
+            Altered = true;
+        }
+
+        /// <summary>
+        /// Replaces contents of a base64-encoded section of map file.
+        /// </summary>
+        /// <param name="sectionName">Name of the section to replace.</param>
+        /// <param name="data">Contents to replace the existing contents with.</param>
+        private void OverrideBase64MapSection(string sectionName, string data)
+        {
+            int lx = 70;
+            List<string> lines = new List<string>();
+            for (int x = 0; x < data.Length; x += lx)
+            {
+                lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
+            }
+            MapConfig.ReplaceSectionValues(sectionName, lines);
+        }
+
+        /// <summary>
+        /// Parses conversion profile information for byte ID-type rules.
+        /// </summary>
+        private void ParseConfigFile(string[] newRules, List<ByteIDConversionRule> currentRules)
+        {
+            if (newRules == null || newRules.Length < 1 || currentRules == null) return;
+            currentRules.Clear();
+            bool pm1ranged = false;
+            bool pm2ranged = false;
+            int pm1val1 = 0;
+            int pm1val2 = 0;
+            int pm2val1 = 0;
+            int pm2val2 = 0;
+            foreach (string str in newRules)
+            {
+                string[] values = str.Split('|');
+                if (values.Length < 2) continue;
+                if (values[0].Contains('-'))
+                {
+                    pm1ranged = true;
+                    try
+                    {
+                        string[] values_1 = values[0].Split('-');
+                        pm1val1 = Convert.ToInt32(values_1[0]);
+                        pm1val2 = Convert.ToInt32(values_1[1]);
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+                else try
+                    {
+                        pm1val1 = Convert.ToInt32(values[0]);
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                if (values[1].Contains('-'))
+                {
+                    pm2ranged = true;
+                    try
+                    {
+                        string[] values_2 = values[1].Split('-');
+                        pm2val1 = Convert.ToInt32(values_2[0]);
+                        pm2val2 = Convert.ToInt32(values_2[1]);
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+                else try
+                    {
+                        pm2val1 = Convert.ToInt32(values[1]);
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+
+                int heightovr = -1;
+                int subovr = -1;
+                if (values.Length >= 3 && values[2] != null && !values[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    heightovr = Conversion.GetIntFromString(values[2], -1);
+                }
+                if (values.Length >= 4 && values[3] != null && !values[3].Equals("*", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    subovr = Conversion.GetIntFromString(values[3], -1);
+                }
+
+                if (pm1ranged && pm2ranged)
+                {
+                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, pm2val2, heightovr, subovr));
+                }
+                else if (pm1ranged && !pm2ranged)
+                {
+                    int diff = pm2val1 + (pm1val2 - pm1val1);
+                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, diff, heightovr, subovr));
+                }
+                else
+                {
+                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, -1, -1, heightovr, subovr));
+                }
+                pm1ranged = false;
+                pm2ranged = false;
+            }
+        }
+
+        /// <summary>
+        /// Parses conversion profile information for string ID-type rules.
+        /// </summary>
+        private void ParseConfigFile(string[] new_rules, List<StringIDConversionRule> current_rules)
+        {
+            if (new_rules == null || new_rules.Length < 1 || current_rules == null) return;
+            current_rules.Clear();
+            foreach (string str in new_rules)
+            {
+                string[] values = str.Split('|');
+                if (values.Length == 1) current_rules.Add(new StringIDConversionRule(values[0], null));
+                else if (values.Length >= 2) current_rules.Add(new StringIDConversionRule(values[0], values[1]));
+            }
+        }
+
+        /// <summary>
+        /// Parses conversion profile information for map file section rules.
+        /// </summary>
+        private void ParseConfigFile(string[] newRules, List<SectionConversionRule> currentRules)
+        {
+            if (newRules == null || newRules.Length < 1 || currentRules == null) return;
+            currentRules.Clear();
+            foreach (string str in newRules)
+            {
+                if (str == null || str.Length < 1) continue;
+                string[] values = str.Split('|');
+                string original_section = "";
+                string new_section = "";
+                string original_key = "";
+                string new_key = "";
+                string new_value = "";
+                if (values.Length > 0)
+                {
+                    if (values[0].StartsWith("=")) values[0] = values[0].Substring(1, values[0].Length - 1);
+                    string[] sec = values[0].Split('=');
+                    if (sec == null || sec.Length < 1) continue;
+                    original_section = sec[0];
+                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') && String.IsNullOrEmpty(sec[1])) new_section = null;
+                    else if (sec.Length > 1) new_section = sec[1];
+                    if (values.Length > 1)
+                    {
+                        string[] key = values[1].Split('=');
+                        if (key != null && key.Length > 0)
+                        {
+                            original_key = key[0];
+                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') && String.IsNullOrEmpty(key[1])) new_key = null;
+                            else if (key.Length > 1) new_key = key[1];
+                        }
+                        if (values.Length > 2)
+                        {
+                            if (!(values[2] == null || values[2] == "" || values[2] == "*"))
+                            {
+                                if (values[2].StartsWith("$GETVAL") && values[2].Contains('(') && values[2].Contains(')'))
+                                {
+                                    string[] valdata = Regex.Match(values[2], @"\(([^)]*)\)").Groups[1].Value.Split(',');
+                                    if (valdata.Length > 1)
+                                    {
+                                        string newval = MapConfig.GetKey(valdata[0], valdata[1], null);
+                                        if (newval != null) new_value = newval;
+                                    }
+                                }
+                                else new_value = values[2];
+                            }
+                        }
+                    }
+                    currentRules.Add(new SectionConversionRule(original_section, new_section, original_key, new_key, new_value));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Changes theater declaration of current map based on conversion profile.
+        /// </summary>
         public void ConvertTheaterData()
         {
             if (!Initialized || NewTheater == null) return;
-            else if (!AllowProcessing())
+            else if (!IsCurrentTheaterAllowed())
             {
                 Logger.Warn("Skipping altering theater data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
             }
             Logger.Info("Attempting to modify theater data of the map file.");
-            if (NewTheater != "" && IsValidTheatreName(NewTheater))
+            if (NewTheater != "" && IsValidTheaterName(NewTheater))
             {
                 MapConfig.SetKey("Map", "Theater", NewTheater);
                 Logger.Info("Map theater declaration changed from '" + MapTheater + "' to '" + NewTheater + "'.");
@@ -202,10 +515,13 @@ namespace MapTool
             }
         }
 
+        /// <summary>
+        /// Changes tile data of current map based on conversion profile.
+        /// </summary>
         public void ConvertTileData()
         {
             if (!Initialized || IsoMapPack5.Count < 1 || TileRules == null || TileRules.Count < 1) return;
-            else if (!AllowProcessing())
+            else if (!IsCurrentTheaterAllowed())
             {
                 Logger.Warn("Skipping altering tile data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
@@ -214,6 +530,9 @@ namespace MapTool
             ApplyTileConversionRules();
         }
 
+        /// <summary>
+        /// Processes tile data conversion rules.
+        /// </summary>
         private void ApplyTileConversionRules()
         {
             int l, h;
@@ -326,6 +645,9 @@ namespace MapTool
             Altered = true;
         }
 
+        /// <summary>
+        /// Converts tileset data into compressed IsoMapPack5 format.
+        /// </summary>
         private void TileSetToMapPack(List<MapTileContainer> tileSet)
         {
             byte[] isoMapPack = new byte[tileSet.Count * 11 + 4];
@@ -355,213 +677,59 @@ namespace MapTool
             OverrideBase64MapSection("IsoMapPack5", data);
         }
 
-        private void ParseConfigFile(string[] newRules, List<ByteIDConversionRule> currentRules)
+        /// <summary>
+        /// Changes overlay data of current map based on conversion profile.
+        /// </summary>
+        public void ConvertOverlayData()
         {
-            if (newRules == null || newRules.Length < 1 || currentRules == null) return;
-            currentRules.Clear();
-            bool pm1ranged = false;
-            bool pm2ranged = false;
-            int pm1val1 = 0;
-            int pm1val2 = 0;
-            int pm2val1 = 0;
-            int pm2val2 = 0;
-            foreach (string str in newRules)
+            if (!Initialized || OverlayRules == null || OverlayRules.Count < 1) return;
+            else if (!IsCurrentTheaterAllowed())
             {
-                string[] values = str.Split('|');
-                if (values.Length < 2) continue;
-                if (values[0].Contains('-'))
-                {
-                    pm1ranged = true;
-                    try
-                    {
-                        string[] values_1 = values[0].Split('-');
-                        pm1val1 = Convert.ToInt32(values_1[0]);
-                        pm1val2 = Convert.ToInt32(values_1[1]);
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-                }
-                else try
-                    {
-                        pm1val1 = Convert.ToInt32(values[0]);
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-                if (values[1].Contains('-'))
-                {
-                    pm2ranged = true;
-                    try
-                    {
-                        string[] values_2 = values[1].Split('-');
-                        pm2val1 = Convert.ToInt32(values_2[0]);
-                        pm2val2 = Convert.ToInt32(values_2[1]);
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-                }
-                else try
-                    {
-                        pm2val1 = Convert.ToInt32(values[1]);
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-
-                int heightovr = -1;
-                int subovr = -1;
-                if (values.Length >= 3 && values[2] != null && !values[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    heightovr = Conversion.GetIntFromString(values[2], -1);
-                }
-                if (values.Length >= 4 && values[3] != null && !values[3].Equals("*", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    subovr = Conversion.GetIntFromString(values[3], -1);
-                }
-
-                if (pm1ranged && pm2ranged)
-                {
-                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, pm2val2, heightovr, subovr));
-                }
-                else if (pm1ranged && !pm2ranged)
-                {
-                    int diff = pm2val1 + (pm1val2 - pm1val1);
-                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, diff, heightovr, subovr));
-                }
-                else
-                {
-                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, -1, -1, heightovr, subovr));
-                }
-                pm1ranged = false;
-                pm2ranged = false;
+                Logger.Warn("Skipping altering overlay data - ApplicableTheaters does not contain entry matching map theater.");
+                return;
             }
+            ParseOverlayPack();
+            Logger.Info("Attempting to modify overlay data of the map file.");
+            ApplyOverlayConversionRules();
         }
 
-        private void ParseConfigFile(string[] new_rules, List<StringIDConversionRule> current_rules)
-        {
-            if (new_rules == null || new_rules.Length < 1 || current_rules == null) return;
-            current_rules.Clear();
-            foreach (string str in new_rules)
-            {
-                string[] values = str.Split('|');
-                if (values.Length == 1) current_rules.Add(new StringIDConversionRule(values[0], null));
-                else if (values.Length >= 2) current_rules.Add(new StringIDConversionRule(values[0], values[1]));
-            }
-        }
 
-        private void ParseConfigFile(string[] newRules, List<SectionConversionRule> currentRules)
+        /// <summary>
+        /// Processes overlay data conversion rules.
+        /// </summary>
+        private void ApplyOverlayConversionRules()
         {
-            if (newRules == null || newRules.Length < 1 || currentRules == null) return;
-            currentRules.Clear();
-            foreach (string str in newRules)
+            for (int i = 0; i < Math.Min(OverlayPack.Length, OverlayDataPack.Length); i++)
             {
-                if (str == null || str.Length < 1) continue;
-                string[] values = str.Split('|');
-                string original_section = "";
-                string new_section = "";
-                string original_key = "";
-                string new_key = "";
-                string new_value = "";
-                if (values.Length > 0)
+                if (OverlayPack[i] == 255) continue;
+                if (OverlayPack[i] < 0 || OverlayPack[i] > 255) OverlayPack[i] = 0;
+                if (OverlayDataPack[i] < 0 || OverlayDataPack[i] > 255) OverlayDataPack[i] = 0;
+                foreach (ByteIDConversionRule rule in OverlayRules)
                 {
-                    if (values[0].StartsWith("=")) values[0] = values[0].Substring(1, values[0].Length - 1);
-                    string[] sec = values[0].Split('=');
-                    if (sec == null || sec.Length < 1) continue;
-                    original_section = sec[0];
-                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') && String.IsNullOrEmpty(sec[1])) new_section = null;
-                    else if (sec.Length > 1) new_section = sec[1];
-                    if (values.Length > 1)
+                    if (!rule.ValidForOverlays()) continue;
+                    if (OverlayPack[i] >= rule.OriginalStartIndex && OverlayPack[i] <= rule.OriginalEndIndex)
                     {
-                        string[] key = values[1].Split('=');
-                        if (key != null && key.Length > 0)
+                        if (rule.NewEndIndex == rule.NewStartIndex)
                         {
-                            original_key = key[0];
-                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') && String.IsNullOrEmpty(key[1])) new_key = null;
-                            else if (key.Length > 1) new_key = key[1];
+                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + rule.NewStartIndex + "'.");
+                            OverlayPack[i] = (byte)rule.NewStartIndex;
+                            break;
                         }
-                        if (values.Length > 2)
+                        else
                         {
-                            if (!(values[2] == null || values[2] == "" || values[2] == "*"))
-                            {
-                                if (values[2].StartsWith("$GETVAL") && values[2].Contains('(') && values[2].Contains(')'))
-                                {
-                                    string[] valdata = Regex.Match(values[2], @"\(([^)]*)\)").Groups[1].Value.Split(',');
-                                    if (valdata.Length > 1)
-                                    {
-                                        string newval = MapConfig.GetKey(valdata[0], valdata[1], null);
-                                        if (newval != null) new_value = newval;
-                                    }
-                                }
-                                else new_value = values[2];
-                            }
+                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i])) + "'.");
+                            OverlayPack[i] = (byte)(rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i]));
+                            break;
                         }
                     }
-                    currentRules.Add(new SectionConversionRule(original_section, new_section, original_key, new_key, new_value));
                 }
             }
+            SaveOverlayPack();
         }
 
-        private bool ParseMapPack()
-        {
-            Logger.Info("Parsing IsoMapPack5.");
-            string data = "";
-            string[] tmp = MapConfig.GetValues("IsoMapPack5");
-            if (tmp == null || tmp.Length < 1) return false;
-            data = ConcatStrings(tmp);
-            int cells;
-            byte[] isoMapPack;
-            try
-            {
-                string size = MapConfig.GetKey("Map", "Size", "");
-                string[] st = size.Split(',');
-                Map_Width = Convert.ToInt16(st[2]);
-                Map_Height = Convert.ToInt16(st[3]);
-                byte[] lzoData = Convert.FromBase64String(data);
-                byte[] test = lzoData;
-                cells = (Map_Width * 2 - 1) * Map_Height;
-                int lzoPackSize = cells * 11 + 4;
-                isoMapPack = new byte[lzoPackSize];
-                // Fill up and filter later
-                int j = 0;
-                for (int i = 0; i < cells; i++)
-                {
-                    isoMapPack[j] = 0x88;
-                    isoMapPack[j + 1] = 0x40;
-                    isoMapPack[j + 2] = 0x88;
-                    isoMapPack[j + 3] = 0x40;
-                    j += 11;
-                }
-                uint total_decompress_size = Format5.DecodeInto(lzoData, isoMapPack);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            MemoryFile mf = new MemoryFile(isoMapPack);
-            for (int i = 0; i < cells; i++)
-            {
-                ushort rx = mf.ReadUInt16();
-                ushort ry = mf.ReadUInt16();
-                int tilenum = mf.ReadInt32();
-                byte subtile = mf.ReadByte();
-                byte level = mf.ReadByte();
-                byte udata = mf.ReadByte();
-                int dx = rx - ry + Map_FullWidth - 1;
-                int dy = rx + ry - Map_FullWidth - 1;
-                if (rx > 0 && ry > 0 && rx <= 16384 && ry <= 16384)
-                {
-                    IsoMapPack5.Add(new MapTileContainer((short)rx, (short)ry, tilenum, subtile, level, udata));
-                }
-            }
-            return true;
-        }
-
+        /// <summary>
+        /// Changes object data of current map based on conversion profile.
+        /// </summary>
         public void ConvertObjectData()
         {
             if (!Initialized || OverlayRules == null || ObjectRules.Count < 1) return;
@@ -574,6 +742,10 @@ namespace MapTool
             ApplyObjectConversionRules("Terrain");
         }
 
+        /// <summary>
+        /// Processes object data conversion rules.
+        /// </summary>
+        /// <param name="sectionName">ID of the object list section to apply the rules to.</param>
         private void ApplyObjectConversionRules(string sectionName)
         {
             if (String.IsNullOrEmpty(sectionName)) return;
@@ -584,7 +756,7 @@ namespace MapTool
                 foreach (StringIDConversionRule rule in ObjectRules)
                 {
                     if (rule == null || rule.Original == null) continue;
-                    if (MatchesRule(kvp.Value, rule.Original))
+                    if (CheckIfObjectIDMatches(kvp.Value, rule.Original))
                     {
                         if (rule.New == null)
                         {
@@ -603,19 +775,13 @@ namespace MapTool
             }
         }
 
-        private bool MatchesRule(string value, string id)
-        {
-            if (value.Equals(id)) return true;
-            string[] sp = value.Split(',');
-            if (sp.Length < 2) return false;
-            if (sp[1].Equals(id)) return true;
-            return false;
-        }
-
+        /// <summary>
+        /// Changes section data of current map based on conversion profile.
+        /// </summary>
         public void ConvertSectionData()
         {
             if (!Initialized || SectionRules == null || SectionRules.Count < 1) return;
-            else if (!AllowProcessing())
+            else if (!IsCurrentTheaterAllowed())
             {
                 Logger.Warn("Skipping altering section data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
@@ -624,6 +790,9 @@ namespace MapTool
             ApplySectionConversionRules();
         }
 
+        /// <summary>
+        /// Processes section data conversion rules.
+        /// </summary>
         private void ApplySectionConversionRules()
         {
             foreach (SectionConversionRule rule in SectionRules)
@@ -668,102 +837,27 @@ namespace MapTool
             }
         }
 
-        public void ConvertOverlayData()
+        /// <summary>
+        /// Checks if map object declaration matches with specific object ID.
+        /// </summary>
+        /// <param name="objectDeclaration">Object declaration from map file.</param>
+        /// <param name="objectID">Object ID.</param>
+        /// <returns>True if a match, otherwise false.</returns>
+        private bool CheckIfObjectIDMatches(string objectDeclaration, string objectID)
         {
-            if (!Initialized || OverlayRules == null || OverlayRules.Count < 1) return;
-            else if (!AllowProcessing())
-            {
-                Logger.Warn("Skipping altering overlay data - ApplicableTheaters does not contain entry matching map theater.");
-                return;
-            }
-            ParseOverlayPack();
-            Logger.Info("Attempting to modify overlay data of the map file.");
-            ApplyOverlayConversionRules();
+            if (objectDeclaration.Equals(objectID)) return true;
+            string[] sp = objectDeclaration.Split(',');
+            if (sp.Length < 2) return false;
+            if (sp[1].Equals(objectID)) return true;
+            return false;
         }
 
-        private void ApplyOverlayConversionRules()
-        {
-            for (int i = 0; i < Math.Min(OverlayPack.Length, OverlayDataPack.Length); i++)
-            {
-                if (OverlayPack[i] == 255) continue;
-                if (OverlayPack[i] < 0 || OverlayPack[i] > 255) OverlayPack[i] = 0;
-                if (OverlayDataPack[i] < 0 || OverlayDataPack[i] > 255) OverlayDataPack[i] = 0;
-                foreach (ByteIDConversionRule rule in OverlayRules)
-                {
-                    if (!rule.ValidForOverlays()) continue;
-                    if (OverlayPack[i] >= rule.OriginalStartIndex && OverlayPack[i] <= rule.OriginalEndIndex)
-                    {
-                        if (rule.NewEndIndex == rule.NewStartIndex)
-                        {
-                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + rule.NewStartIndex + "'.");
-                            OverlayPack[i] = (byte)rule.NewStartIndex;
-                            break;
-                        }
-                        else
-                        {
-                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i])) + "'.");
-                            OverlayPack[i] = (byte)(rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i]));
-                            break;
-                        }
-                    }
-                }
-            }
-            SaveOverlayPack();
-        }
-
-        private void ParseOverlayPack()
-        {
-            Logger.Info("Parsing OverlayPack.");
-            string[] values = MapConfig.GetValues("OverlayPack");
-            if (values == null || values.Length < 1) return;
-            byte[] format80Data = Convert.FromBase64String(ConcatStrings(values));
-            var overlaypack = new byte[1 << 18];
-            Format5.DecodeInto(format80Data, overlaypack, 80);
-
-            Logger.Info("Parsing OverlayDataPack.");
-            values = MapConfig.GetValues("OverlayDataPack");
-            if (values == null || values.Length < 1) return;
-            format80Data = Convert.FromBase64String(ConcatStrings(values));
-            var overlaydatapack = new byte[1 << 18];
-            Format5.DecodeInto(format80Data, overlaydatapack, 80);
-
-            OverlayPack = overlaypack;
-            OverlayDataPack = overlaydatapack;
-        }
-
-        private void SaveOverlayPack()
-        {
-            string base64_overlayPack = Convert.ToBase64String(Format5.Encode(OverlayPack, 80), Base64FormattingOptions.None);
-            string base64_overlayDataPack = Convert.ToBase64String(Format5.Encode(OverlayDataPack, 80), Base64FormattingOptions.None);
-            OverrideBase64MapSection("OverlayPack", base64_overlayPack);
-            OverrideBase64MapSection("OverlayDataPack", base64_overlayDataPack);
-            Altered = true;
-        }
-
-        private void OverrideBase64MapSection(string sectionName, string data)
-        {
-            int lx = 70;
-            List<string> lines = new List<string>();
-            for (int x = 0; x < data.Length; x += lx)
-            {
-                lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
-            }
-            MapConfig.ReplaceSectionValues(sectionName, lines);
-        }
-
-        private string ConcatStrings(string[] strings)
-        {
-            if (strings == null || strings.Length < 1) return null;
-            var sb = new StringBuilder();
-            foreach (string v in strings)
-                sb.Append(v);
-            return sb.ToString();
-        }
-
-
+        /// <summary>
+        /// Lists theater config file data to a text file.
+        /// </summary>
         public void ListTileSetData()
         {
-            if (TheaterConfig == null) return;
+            if (!Initialized || TheaterConfig == null) return;
 
             TilesetCollection mtiles = TilesetCollection.ParseFromINIFile(TheaterConfig);
 
@@ -789,35 +883,20 @@ namespace MapTool
             File.WriteAllLines(FileOutput, lines.ToArray());
         }
 
-
-        public void Save()
+        /// <summary>
+        /// Merges array of string key-value pairs to a single string array containing strings of the keys and values separated by =.
+        /// </summary>
+        /// <param name="keyValuePairs">Array of string key-value pairs.</param>
+        /// <returns>Array of strings made by merging the keys and values.</returns>
+        private string[] MergeKeyValuePairs(KeyValuePair<string, string>[] keyValuePairs)
         {
-            if (UseMapOptimize)
+            string[] result = new string[keyValuePairs.Length];
+            for (int i = 0; i < keyValuePairs.Length; i++)
             {
-                Logger.Info("ApplyMapOptimization set: Saved map will have map section order optimizations applied.");
-                MapConfig.MoveSectionToFirst("Basic");
-                MapConfig.MoveSectionToFirst("MultiplayerDialogSettings");
-                MapConfig.MoveSectionToLast("Digest");
-            }
-            if (UseMapCompress)
-                Logger.Info("ApplyMapCompress set: Saved map will have no unnecessary whitespaces.");
-            MapConfig.Save(FileOutput, !UseMapCompress);
-        }
-
-        private string[] MergeKVP(KeyValuePair<string, string>[] keyValuePair)
-        {
-            string[] result = new string[keyValuePair.Length];
-            for (int i = 0; i < keyValuePair.Length; i++)
-            {
-                result[i] = keyValuePair[i].Key + "=" + keyValuePair[i].Value;
+                result[i] = keyValuePairs[i].Key + "=" + keyValuePairs[i].Value;
             }
             return result;
         }
 
-        public static bool IsValidTheatreName(string theaterName)
-        {
-            if (theaterName == "TEMPERATE" || theaterName == "SNOW" || theaterName == "LUNAR" || theaterName == "DESERT" || theaterName == "URBAN" || theaterName == "NEWURBAN") return true;
-            return false;
-        }
     }
 }
