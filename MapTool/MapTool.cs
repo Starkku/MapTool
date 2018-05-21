@@ -149,19 +149,21 @@ namespace MapTool
                     if (NewTheater != null)
                         NewTheater = NewTheater.ToUpper();
 
-                    string[] tmp = null;
+                    string[] applicableTheaters = null;
                     try
                     {
-                        tmp = ProfileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
+                        applicableTheaters = ProfileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
                     }
                     catch (Exception)
                     {
                     }
-                    if (tmp != null)
+                    if (applicableTheaters != null)
                     {
-                        for (int i = 0; i < tmp.Length; i++)
+                        for (int i = 0; i < applicableTheaters.Length; i++)
                         {
-                            ApplicableTheaters.Add(tmp[i].Trim().ToUpper());
+                            string theater = applicableTheaters[i].Trim().ToUpper();
+                            if (theater == "") continue;
+                            ApplicableTheaters.Add(theater);
                         }
                     }
                     if (ApplicableTheaters.Count < 1)
@@ -170,7 +172,7 @@ namespace MapTool
                     // Allow saving map without any other changes if either of these are set and ApplicableTheaters allows it.
                     if ((UseMapCompress || UseMapOptimize) && IsCurrentTheaterAllowed()) Altered = true;
 
-                    if (!Altered && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null && NewTheater == null)
+                    if (!Altered && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null && String.IsNullOrEmpty(NewTheater))
                     {
                         Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
@@ -500,14 +502,14 @@ namespace MapTool
         /// </summary>
         public void ConvertTheaterData()
         {
-            if (!Initialized || NewTheater == null) return;
+            if (!Initialized || String.IsNullOrEmpty(NewTheater)) return;
             else if (!IsCurrentTheaterAllowed())
             {
                 Logger.Warn("Skipping altering theater data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
             }
             Logger.Info("Attempting to modify theater data of the map file.");
-            if (NewTheater != "" && IsValidTheaterName(NewTheater))
+            if (IsValidTheaterName(NewTheater))
             {
                 MapConfig.SetKey("Map", "Theater", NewTheater);
                 Logger.Info("Map theater declaration changed from '" + MapTheater + "' to '" + NewTheater + "'.");
