@@ -22,11 +22,11 @@ A comma-separated list of filenames including file extensions to read from *same
 
 #### ApplyMapOptimization
 
-If set to yes/true, will ensure that on the saved map, section with name **MultiplayerDialogSettings** will be the first section, immediately followed by section with name **Basic** and finally the section with name **Digest** will be the last. This potentially allows for game to find these particular sections marginally faster.
+If set to yes / true, will ensure that on the saved map, section with name **MultiplayerDialogSettings** will be the first section, immediately followed by section with name **Basic** and finally the section with name **Digest** will be the last. This potentially allows for game to find these particular sections marginally faster.
 
 #### ApplyMapCompress
 
-If set to yes/true, no unnecessary white space is put on the saved map. This allows for map size to be marginally smaller.
+If set to yes / true, no unnecessary white space is put on the saved map. This allows for map size to be marginally smaller.
 
 ### TheaterRules
 
@@ -46,13 +46,21 @@ Do note that effects of both SortBy and RemoveLevel0ClearTiles are removed when 
 
 Allows for sorting of tile data in IsoMapPack5, resulting in potentially better compression.
 
-Sorting by following values is available: **X, Y, TILEINDEX, SUBTILEINDEX, LEVEL, UDATA, X\_LEVEL\_TILEINDEX** (Sort by X then by LEVEL then by TILEINDEX - the remaining ones follow a similar pattern)**, X\_TILEINDEX\_LEVEL, LEVEL\_X\_TILEINDEX,TILEINDEX\_X\_LEVEL**.
+Sorting by following values is available: **X, Y, TILEINDEX, SUBTILEINDEX, LEVEL, ICEGROWTH, X\_LEVEL\_TILEINDEX** (Sort by X then by LEVEL then by TILEINDEX - the remaining ones follow a similar pattern)**, X\_TILEINDEX\_LEVEL, LEVEL\_X\_TILEINDEX,TILEINDEX\_X\_LEVEL**.
 
 Good compression is achieved by using either **X\_LEVEL\_TILEINDEX** or **X\_TILEINDEX\_LEVEL**.
 
 #### RemoveLevel0ClearTiles
 
-If set to yes/true, removes all clear tiles at lowest elevation level (0). Since game always fills cells that are missing tiles with clear tiles that have elevation level of 0, removing them from IsoMapPack5 is a way to trim down the size of a map file.
+If set to yes / true, removes all clear tiles at lowest elevation level (0). Since game always fills cells that are missing tiles with clear tiles that have elevation level of 0, removing them from IsoMapPack5 is a way to trim down the size of a map file.
+
+#### IceGrowthFixReset
+
+If set to yes / true, this will disable ice growth for the entire map. This overrides IceGrowthFixUseBuilding, so omit or set to no / false if you wish to use that feature.
+
+#### IceGrowthFixUseBuilding
+
+A single BuildingType ID used to mark tiles which have such building placed on them on the map as tiles where ice is allowed to grow. It is recommended to use a 'dummy building' like TSTLAMP and place it on all ice tiles that should be allowed to regrow if damaged, as well as surrounding water tiles where ice should be allowed to grow / expand to.
 
 ### TileRules
 
