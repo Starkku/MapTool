@@ -57,10 +57,14 @@ namespace MapTool
         private List<ByteIDConversionRule> OverlayRules = new List<ByteIDConversionRule>();       // Conversion profile overlay rules.
         private List<StringIDConversionRule> ObjectRules = new List<StringIDConversionRule>();    // Conversion profile object rules.
         private List<SectionConversionRule> SectionRules = new List<SectionConversionRule>();     // Conversion profile section rules.
+
+        // Map modify options.
         private bool UseMapOptimize = false;
         private bool UseMapCompress = false;
         private string IsoMapPack5SortBy = null;
         private bool RemoveLevel0ClearTiles = false;
+        private string IceGrowthFixUseBuilding = null;
+        private bool IceGrowthFixReset = false;
 
         private INIFile TheaterConfig;                                                            // Theater config INI file.
 
@@ -134,6 +138,8 @@ namespace MapTool
                     if (IsoMapPack5SortBy != null)
                         IsoMapPack5SortBy = IsoMapPack5SortBy.ToUpper();
                     RemoveLevel0ClearTiles = Conversion.GetBoolFromString(ProfileConfig.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false"), false);
+                    IceGrowthFixUseBuilding = ProfileConfig.GetKey("IsoMapPack5", "IceGrowthFixUseBuilding", null);
+                    IceGrowthFixReset = Conversion.GetBoolFromString(ProfileConfig.GetKey("IsoMapPack5", "IceGrowthFixReset", "false"), false);
 
                     string[] tilerules = null;
                     string[] overlayrules = null;
@@ -269,17 +275,17 @@ namespace MapTool
             MemoryFile mf = new MemoryFile(isoMapPack);
             for (int i = 0; i < cells; i++)
             {
-                ushort rx = mf.ReadUInt16();
-                ushort ry = mf.ReadUInt16();
-                int tilenum = mf.ReadInt32();
-                byte subtile = mf.ReadByte();
+                ushort x = mf.ReadUInt16();
+                ushort y = mf.ReadUInt16();
+                int tileNum = mf.ReadInt32();
+                byte subTile = mf.ReadByte();
                 byte level = mf.ReadByte();
-                byte udata = mf.ReadByte();
-                int dx = rx - ry + Map_FullWidth - 1;
-                int dy = rx + ry - Map_FullWidth - 1;
-                if (rx > 0 && ry > 0 && rx <= 16384 && ry <= 16384)
+                byte iceGrowth = mf.ReadByte();
+                int dx = x - y + Map_FullWidth - 1;
+                int dy = x + y - Map_FullWidth - 1;
+                if (x > 0 && y > 0 && x <= 16384 && y <= 16384)
                 {
-                    IsoMapPack5.Add(new MapTileContainer((short)rx, (short)ry, tilenum, subtile, level, udata));
+                    IsoMapPack5.Add(new MapTileContainer((short)x, (short)y, tileNum, subTile, level, iceGrowth));
                 }
             }
             return true;
@@ -293,7 +299,7 @@ namespace MapTool
             Logger.Info("Parsing OverlayPack.");
             string[] values = MapConfig.GetValues("OverlayPack");
             if (values == null || values.Length < 1) return;
-            byte[] format80Data = Convert.FromBase64String(String.Join("",values));
+            byte[] format80Data = Convert.FromBase64String(String.Join("", values));
             var overlaypack = new byte[1 << 18];
             Format5.DecodeInto(format80Data, overlaypack, 80);
 
@@ -540,6 +546,7 @@ namespace MapTool
             int l, h;
             List<MapTileContainer> tilesetForSort = new List<MapTileContainer>();
             List<MapTileContainer> tilesetSorted = new List<MapTileContainer>();
+            List<Tuple<short, short>> tilesXY = new List<Tuple<short, short>>();
 
             // Apply tile conversion rules
             foreach (MapTileContainer t in IsoMapPack5)
@@ -575,12 +582,49 @@ namespace MapTool
                 }
             }
 
+            // Fix for TS Snow Maps Ice Growth, FinalSun sets all IceGrowth byte to 0
+            // Using a defined building to get a list of X, Y then to set IceGrowth to 1
+            string[] buildings = MapConfig.GetValues("Structures");
+            if (IceGrowthFixUseBuilding != null && buildings != null && buildings.Length > 0)
+            {
+                foreach (string building in buildings)
+                {
+                    string[] values = building.Split(',');
+                    if (values != null && values.Length > 1)
+                    {
+                        string buildingID = values[1].Trim();
+                        if (buildingID != "" && buildingID == IceGrowthFixUseBuilding)
+                        {
+                            short x = Conversion.GetShortFromString(values[3], -1);
+                            short y = Conversion.GetShortFromString(values[4], -1);
+                            if (x == -1 || y == -1)
+                                continue;
+                            tilesXY.Add(new Tuple<short, short>(x, y));
+                        }
+                    }
+                }
+            }
+            if (IceGrowthFixReset)
+                Logger.Info("IceGrowthFixReset set: Will attempt to disable ice growth for entire map.");
+            else if (tilesXY.Count > 0)
+                Logger.Info("IceGrowthFixUseBuilding set: Will attempt to enable ice growth for tiles with coordinates from building ID: " + IceGrowthFixUseBuilding);
+            else if (IceGrowthFixUseBuilding != null && tilesXY.Count < 1)
+                Logger.Warn("IceGrowthFixUseBuilding is set but no instances of the building were found on the map.");
+
             if (RemoveLevel0ClearTiles)
                 Logger.Info("RemoveLevel0ClearTiles set: Will attempt to remove all tile data with tile index & level set to 0");
 
             // Remove Height Level 0 Clear Tiles if set in profile
             foreach (MapTileContainer t in IsoMapPack5)
             {
+                // Set IceGrowth byte to 1 for Ice Growth for specific tiles. If Reset, set all to 0
+                if (tilesXY.Count > 0)
+                {
+                    Tuple<short, short> exists = tilesXY.Find(s => s.Item1 == t.X && s.Item2 == t.Y);
+                    if (exists != null) t.IceGrowth = 1;
+                }
+                if (IceGrowthFixReset) t.IceGrowth = 0; //Overrides ice growth fix
+
                 if (RemoveLevel0ClearTiles)
                 {
                     if (t.TileIndex > 0 || t.Level > 0 || t.SubTileIndex > 0)
@@ -628,8 +672,8 @@ namespace MapTool
                     case "SUBTILEINDEX":
                         tilesetSorted = tilesetForSort.OrderBy(x => x.SubTileIndex).ToList();
                         break;
-                    case "UDATA":
-                        tilesetSorted = tilesetForSort.OrderBy(x => x.UData).ToList();
+                    case "ICEGROWTH":
+                        tilesetSorted = tilesetForSort.OrderBy(x => x.IceGrowth).ToList();
                         break;
                     case "Y":
                         tilesetSorted = tilesetForSort.OrderBy(x => x.Y).ToList();

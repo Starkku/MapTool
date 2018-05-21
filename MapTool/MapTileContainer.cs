@@ -39,20 +39,20 @@ namespace MapTool
             get;
             set;
         }
-        public byte UData
+        public byte IceGrowth
         {
             get;
             set;
         }
 
-        public MapTileContainer(short x = 0, short y = 0, int tileIndex = 0, byte subTileIndex = 0, byte level = 0, byte unknownData = 0) 
+        public MapTileContainer(short x = 0, short y = 0, int tileIndex = 0, byte subTileIndex = 0, byte level = 0, byte iceGrowth = 0) 
         {
             X = x;
             Y = y;
             TileIndex = tileIndex;
             SubTileIndex = subTileIndex;
             Level = level;
-            UData = unknownData;
+            IceGrowth = iceGrowth;
         }
     }
 }
