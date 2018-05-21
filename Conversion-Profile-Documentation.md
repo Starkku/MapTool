@@ -62,6 +62,8 @@ If set to yes / true, this will disable ice growth for the entire map. This over
 
 A single BuildingType ID used to mark tiles which have such building placed on them on the map as tiles where ice is allowed to grow. It is recommended to use a 'dummy building' like TSTLAMP and place it on all ice tiles that should be allowed to regrow if damaged, as well as surrounding water tiles where ice should be allowed to grow / expand to.
 
+As a note, there is no way to set or view the ice growth flag in map editor, either for individual tiles or otherwise but it is kept for existing tiles if set upon loading and / or saving a map.
+
 ### TileRules
 
 A list of tile index conversion rules, each on it's own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values.
