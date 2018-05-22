@@ -156,13 +156,7 @@ namespace MapTool
                         NewTheater = NewTheater.ToUpper();
 
                     string[] applicableTheaters = null;
-                    try
-                    {
-                        applicableTheaters = ProfileConfig.GetKey("TheaterRules", "ApplicableTheaters", null).Split(',');
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    applicableTheaters = ProfileConfig.GetKey("TheaterRules", "ApplicableTheaters", "").Split(',');
                     if (applicableTheaters != null)
                     {
                         for (int i = 0; i < applicableTheaters.Length; i++)
@@ -359,50 +353,38 @@ namespace MapTool
             {
                 string[] values = str.Split('|');
                 if (values.Length < 2) continue;
+
                 if (values[0].Contains('-'))
                 {
                     pm1ranged = true;
-                    try
-                    {
-                        string[] values_1 = values[0].Split('-');
-                        pm1val1 = Convert.ToInt32(values_1[0]);
-                        pm1val2 = Convert.ToInt32(values_1[1]);
-                    }
-                    catch (Exception)
-                    {
+                    string[] values_1 = values[0].Split('-');
+                    pm1val1 = Conversion.GetIntFromString(values_1[0], -1);
+                    pm1val2 = Conversion.GetIntFromString(values_1[1], -1);
+                    if (pm1val1 < 0 || pm1val2 < 0)
                         continue;
-                    }
                 }
-                else try
-                    {
-                        pm1val1 = Convert.ToInt32(values[0]);
-                    }
-                    catch (Exception)
-                    {
+                else
+                {
+                    pm1val1 = Conversion.GetIntFromString(values[0], -1);
+                    if (pm1val1 < 0)
                         continue;
-                    }
+                }
+
                 if (values[1].Contains('-'))
                 {
                     pm2ranged = true;
-                    try
-                    {
-                        string[] values_2 = values[1].Split('-');
-                        pm2val1 = Convert.ToInt32(values_2[0]);
-                        pm2val2 = Convert.ToInt32(values_2[1]);
-                    }
-                    catch (Exception)
-                    {
+                    string[] values_2 = values[1].Split('-');
+                    pm2val1 = Conversion.GetIntFromString(values_2[0], -1);
+                    pm2val2 = Conversion.GetIntFromString(values_2[1], -1);
+                    if (pm2val1 < 0 || pm2val2 < 0)
                         continue;
-                    }
                 }
-                else try
-                    {
-                        pm2val1 = Convert.ToInt32(values[1]);
-                    }
-                    catch (Exception)
-                    {
+                else
+                {
+                    pm2val1 = Conversion.GetIntFromString(values[1], -1);
+                    if (pm2val1 < 0)
                         continue;
-                    }
+                }
 
                 int heightovr = -1;
                 int subovr = -1;
@@ -627,7 +609,7 @@ namespace MapTool
 
                 if (RemoveLevel0ClearTiles)
                 {
-                    if (t.TileIndex > 0 || t.Level > 0 || t.SubTileIndex > 0)
+                    if (t.TileIndex > 0 || t.Level > 0 || t.SubTileIndex > 0 || t.IceGrowth > 0)
                         tilesetForSort.Add(t);
                 }
                 else
@@ -714,7 +696,7 @@ namespace MapTool
                 isoMapPack[i + 7] = tilei[3];
                 isoMapPack[i + 8] = t.SubTileIndex;
                 isoMapPack[i + 9] = t.Level;
-                isoMapPack[i + 10] = t.Level;
+                isoMapPack[i + 10] = t.IceGrowth;
                 i += 11;
             }
 
