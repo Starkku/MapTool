@@ -112,6 +112,14 @@ Fourth value serves as an override to tile's sub-tile index, serving to determin
 
 Also worth noting is that if you declare sub-tile index override, you must also declare height override before it. Substituting the value with * retains the original height values in processed maps.
 
+**Example #6:**
+<pre>
+[TileRules]
+0-15|25~40
+16|25~40
+</pre>
+
+This randomly assigns new tile index from range 25 to 45 to tiles 0-15, as well as all tile 16.
 
 ### OverlayRules
 
@@ -121,9 +129,11 @@ A list of overlay ID conversion rules, each on it's own line with a | as a separ
 <pre>
 [OverlayRules]
 0|5
+15|20~30
+16-19|20~30
 </pre>
 
-All overlays with ID 0 are converted to overlays with ID 5.
+All overlays with ID 0 are converted to overlays with ID 5. Overlays with ID 15 are randomly assigned new ID from range of 20 to 30, likewise for overlays with ID in range of 16 to 19.
 
 Values from 0 to 254 are available for regular use. Using 255 as destination ID will remove overlays. Using 255 as source ID is not valid and results in the conversion rule being ignored.
 
