@@ -387,7 +387,7 @@ namespace MapTool
                     string[] values_2 = values[1].Split('~');
                     value2Part1 = Conversion.GetIntFromString(values_2[0], -1);
                     value2Part2 = Conversion.GetIntFromString(values_2[1], -1);
-                    if (value2Part1 < 0 || value2Part2 < 0 || value2Part1 == value2Part2)
+                    if (value2Part1 < 0 || value2Part2 < 0 || value2Part1 >= value2Part2)
                         continue;
                     isRandomizer = true;
                 }
