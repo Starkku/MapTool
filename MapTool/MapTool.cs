@@ -343,12 +343,14 @@ namespace MapTool
         {
             if (newRules == null || newRules.Length < 1 || currentRules == null) return;
             currentRules.Clear();
-            bool pm1ranged = false;
-            bool pm2ranged = false;
-            int pm1val1 = 0;
-            int pm1val2 = 0;
-            int pm2val1 = 0;
-            int pm2val2 = 0;
+            bool value1IsARange = false;
+            bool value2IsARange = false;
+            bool isRandomizer = false;
+            int value1Part1 = 0;
+            int value1Part2 = 0;
+            int value2Part1 = 0;
+            int value2Part2 = 0;
+
             foreach (string str in newRules)
             {
                 string[] values = str.Split('|');
@@ -356,62 +358,77 @@ namespace MapTool
 
                 if (values[0].Contains('-'))
                 {
-                    pm1ranged = true;
+                    value1IsARange = true;
                     string[] values_1 = values[0].Split('-');
-                    pm1val1 = Conversion.GetIntFromString(values_1[0], -1);
-                    pm1val2 = Conversion.GetIntFromString(values_1[1], -1);
-                    if (pm1val1 < 0 || pm1val2 < 0)
+                    value1Part1 = Conversion.GetIntFromString(values_1[0], -1);
+                    value1Part2 = Conversion.GetIntFromString(values_1[1], -1);
+                    if (value1Part1 < 0 || value1Part2 < 0)
                         continue;
                 }
                 else
                 {
-                    pm1val1 = Conversion.GetIntFromString(values[0], -1);
-                    if (pm1val1 < 0)
+                    value1Part1 = Conversion.GetIntFromString(values[0], -1);
+                    if (value1Part1 < 0)
                         continue;
                 }
 
                 if (values[1].Contains('-'))
                 {
-                    pm2ranged = true;
+                    value2IsARange = true;
                     string[] values_2 = values[1].Split('-');
-                    pm2val1 = Conversion.GetIntFromString(values_2[0], -1);
-                    pm2val2 = Conversion.GetIntFromString(values_2[1], -1);
-                    if (pm2val1 < 0 || pm2val2 < 0)
+                    value2Part1 = Conversion.GetIntFromString(values_2[0], -1);
+                    value2Part2 = Conversion.GetIntFromString(values_2[1], -1);
+                    if (value2Part1 < 0 || value2Part2 < 0)
                         continue;
+                }
+                else if (values[1].Contains('~'))
+                {
+                    value2IsARange = true;
+                    string[] values_2 = values[1].Split('~');
+                    value2Part1 = Conversion.GetIntFromString(values_2[0], -1);
+                    value2Part2 = Conversion.GetIntFromString(values_2[1], -1);
+                    if (value2Part1 < 0 || value2Part2 < 0 || value2Part1 == value2Part2)
+                        continue;
+                    isRandomizer = true;
                 }
                 else
                 {
-                    pm2val1 = Conversion.GetIntFromString(values[1], -1);
-                    if (pm2val1 < 0)
+                    value2Part1 = Conversion.GetIntFromString(values[1], -1);
+                    if (value2Part1 < 0)
                         continue;
                 }
 
-                int heightovr = -1;
-                int subovr = -1;
+                int heightOverride = -1;
+                int subTileOverride = -1;
                 if (values.Length >= 3 && values[2] != null && !values[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    heightovr = Conversion.GetIntFromString(values[2], -1);
+                    heightOverride = Conversion.GetIntFromString(values[2], -1);
                 }
                 if (values.Length >= 4 && values[3] != null && !values[3].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    subovr = Conversion.GetIntFromString(values[3], -1);
+                    subTileOverride = Conversion.GetIntFromString(values[3], -1);
                 }
 
-                if (pm1ranged && pm2ranged)
+                if ((value1IsARange && value2IsARange))
                 {
-                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, pm2val2, heightovr, subovr));
+                    currentRules.Add(new ByteIDConversionRule(value1Part1, value2Part1, value1Part2, value2Part2, heightOverride, subTileOverride, isRandomizer));
                 }
-                else if (pm1ranged && !pm2ranged)
+                else if (value1IsARange && !value2IsARange)
                 {
-                    int diff = pm2val1 + (pm1val2 - pm1val1);
-                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, pm1val2, diff, heightovr, subovr));
+                    int diff = value2Part1 + (value1Part2 - value1Part1);
+                    currentRules.Add(new ByteIDConversionRule(value1Part1, value2Part1, value1Part2, diff, heightOverride, subTileOverride, isRandomizer));
+                }
+                else if (!value1IsARange && value2IsARange)
+                {
+                    currentRules.Add(new ByteIDConversionRule(value1Part1, value2Part1, value1Part1, value2Part2, heightOverride, subTileOverride, isRandomizer));
                 }
                 else
                 {
-                    currentRules.Add(new ByteIDConversionRule(pm1val1, pm2val1, -1, -1, heightovr, subovr));
+                    currentRules.Add(new ByteIDConversionRule(value1Part1, value2Part1, -1, -1, heightOverride, subTileOverride, isRandomizer));
                 }
-                pm1ranged = false;
-                pm2ranged = false;
+                value1IsARange = false;
+                value2IsARange = false;
+                isRandomizer = false;
             }
         }
 
@@ -441,27 +458,27 @@ namespace MapTool
             {
                 if (str == null || str.Length < 1) continue;
                 string[] values = str.Split('|');
-                string original_section = "";
-                string new_section = "";
-                string original_key = "";
-                string new_key = "";
-                string new_value = "";
+                string originalSection = "";
+                string newSection = "";
+                string originalKey = "";
+                string newKey = "";
+                string newValue = "";
                 if (values.Length > 0)
                 {
                     if (values[0].StartsWith("=")) values[0] = values[0].Substring(1, values[0].Length - 1);
                     string[] sec = values[0].Split('=');
                     if (sec == null || sec.Length < 1) continue;
-                    original_section = sec[0];
-                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') && String.IsNullOrEmpty(sec[1])) new_section = null;
-                    else if (sec.Length > 1) new_section = sec[1];
+                    originalSection = sec[0];
+                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') && String.IsNullOrEmpty(sec[1])) newSection = null;
+                    else if (sec.Length > 1) newSection = sec[1];
                     if (values.Length > 1)
                     {
                         string[] key = values[1].Split('=');
                         if (key != null && key.Length > 0)
                         {
-                            original_key = key[0];
-                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') && String.IsNullOrEmpty(key[1])) new_key = null;
-                            else if (key.Length > 1) new_key = key[1];
+                            originalKey = key[0];
+                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') && String.IsNullOrEmpty(key[1])) newKey = null;
+                            else if (key.Length > 1) newKey = key[1];
                         }
                         if (values.Length > 2)
                         {
@@ -473,14 +490,14 @@ namespace MapTool
                                     if (valdata.Length > 1)
                                     {
                                         string newval = MapConfig.GetKey(valdata[0], valdata[1], null);
-                                        if (newval != null) new_value = newval;
+                                        if (newval != null) newValue = newval;
                                     }
                                 }
-                                else new_value = values[2];
+                                else newValue = values[2];
                             }
                         }
                     }
-                    currentRules.Add(new SectionConversionRule(original_section, new_section, original_key, new_key, new_value));
+                    currentRules.Add(new SectionConversionRule(originalSection, newSection, originalKey, newKey, newValue));
                 }
             }
         }
@@ -525,39 +542,49 @@ namespace MapTool
         /// </summary>
         private void ApplyTileConversionRules()
         {
-            int l, h;
             List<MapTileContainer> tilesetForSort = new List<MapTileContainer>();
             List<MapTileContainer> tilesetSorted = new List<MapTileContainer>();
             List<Tuple<short, short>> tilesXY = new List<Tuple<short, short>>();
+            Random random = new Random();
 
             // Apply tile conversion rules
-            foreach (MapTileContainer t in IsoMapPack5)
+            foreach (MapTileContainer tile in IsoMapPack5)
             {
-                if (t.TileIndex < 0 || t.TileIndex == 65535) t.TileIndex = 0;
-                foreach (ByteIDConversionRule r in TileRules)
+                if (tile.TileIndex < 0 || tile.TileIndex == 65535) tile.TileIndex = 0;
+                foreach (ByteIDConversionRule rule in TileRules)
                 {
-                    l = r.OriginalStartIndex;
-                    h = r.OriginalEndIndex;
-                    if (t.TileIndex >= l && t.TileIndex <= h)
+                    if (tile.TileIndex >= rule.OriginalStartIndex && tile.TileIndex <= rule.OriginalEndIndex)
                     {
-                        if (r.HeightOverride >= 0)
+                        if (rule.HeightOverride >= 0)
                         {
-                            t.Level = (byte)Math.Min(r.HeightOverride, 14);
+                            tile.Level = (byte)Math.Min(rule.HeightOverride, 14);
                         }
-                        if (r.SubIndexOverride >= 0)
+                        if (rule.SubIndexOverride >= 0)
                         {
-                            t.SubTileIndex = (byte)Math.Min(r.SubIndexOverride, 255);
+                            tile.SubTileIndex = (byte)Math.Min(rule.SubIndexOverride, 255);
                         }
-                        if (r.NewEndIndex == r.NewStartIndex)
+                        if (rule.IsRandomizer)
                         {
-                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + r.NewStartIndex);
-                            t.TileIndex = r.NewStartIndex;
+                            int newindex = random.Next(rule.NewStartIndex, rule.NewEndIndex);
+                            Logger.Debug("Tile rule random range: [" + rule.NewStartIndex +"-" + rule.NewEndIndex+ "]. Picked: " + newindex);
+                            if (newindex != tile.TileIndex)
+                            {
+                                Logger.Debug("Tile ID " + tile.TileIndex + " at " + tile.X + "," + tile.Y + " changed to " + newindex);
+                                tile.TileIndex = newindex;
+                            }
+                            break;
+                        }
+                        else if (rule.NewEndIndex == rule.NewStartIndex)
+                        {
+                            Logger.Debug("Tile ID " + tile.TileIndex + " at " + tile.X + "," + tile.Y + " changed to " + rule.NewStartIndex);
+                            tile.TileIndex = rule.NewStartIndex;
                             break;
                         }
                         else
                         {
-                            Logger.Debug("Tile ID " + t.TileIndex + " at " + t.X + "," + t.Y + " changed to " + (r.NewStartIndex + Math.Abs(l - t.TileIndex)));
-                            t.TileIndex = (r.NewStartIndex + Math.Abs(l - t.TileIndex));
+                            Logger.Debug("Tile ID " + tile.TileIndex + " at " + tile.X + "," + tile.Y + " changed to " + 
+                                (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - tile.TileIndex)));
+                            tile.TileIndex = (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - tile.TileIndex));
                             break;
                         }
                     }
@@ -727,6 +754,7 @@ namespace MapTool
         /// </summary>
         private void ApplyOverlayConversionRules()
         {
+            Random random = new Random();
             for (int i = 0; i < Math.Min(OverlayPack.Length, OverlayDataPack.Length); i++)
             {
                 if (OverlayPack[i] == 255) continue;
@@ -737,7 +765,18 @@ namespace MapTool
                     if (!rule.ValidForOverlays()) continue;
                     if (OverlayPack[i] >= rule.OriginalStartIndex && OverlayPack[i] <= rule.OriginalEndIndex)
                     {
-                        if (rule.NewEndIndex == rule.NewStartIndex)
+                        if (rule.IsRandomizer)
+                        {
+                            byte newindex = (byte)random.Next(rule.NewStartIndex, rule.NewEndIndex);
+                            Logger.Debug("Overlay rule random range: [" + rule.NewStartIndex + "-" + rule.NewEndIndex + "]. Picked: " + newindex);
+                            if (newindex != OverlayPack[i])
+                            {
+                                Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + newindex + "'.");
+                                OverlayPack[i] = newindex;
+                            }
+                            break;
+                        }
+                        else if (rule.NewEndIndex == rule.NewStartIndex)
                         {
                             Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + rule.NewStartIndex + "'.");
                             OverlayPack[i] = (byte)rule.NewStartIndex;
@@ -904,8 +943,9 @@ namespace MapTool
                     Logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " skipped due to tile count of 0.");
                     continue;
                 }
-                lines.AddRange(ts.getPrintableData(ref tilecounter));
+                lines.AddRange(ts.GetPrintableData(tilecounter));
                 lines.Add("");
+                tilecounter += ts.TilesInSet;
                 Logger.Debug(ts.SetID + " (" + ts.SetName + ")" + " added to the list.");
             }
             File.WriteAllLines(FileOutput, lines.ToArray());

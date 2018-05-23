@@ -43,8 +43,13 @@ namespace MapTool
             get;
             private set;
         }
+        public bool IsRandomizer
+        {
+            get;
+            private set;
+        }
 
-        public ByteIDConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex = -1, int newEndIndex = -1, int heightOverride = -1, int subIndexOverride = -1)
+        public ByteIDConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex = -1, int newEndIndex = -1, int heightOverride = -1, int subIndexOverride = -1, bool isRandomizer = false)
         {
             OriginalStartIndex = originalStartIndex;
             if (originalEndIndex < 0) OriginalEndIndex = originalStartIndex;
@@ -54,6 +59,7 @@ namespace MapTool
             else NewEndIndex = newEndIndex;
             HeightOverride = heightOverride;
             SubIndexOverride = subIndexOverride;
+            IsRandomizer = isRandomizer;
         }
 
         public bool ValidForOverlays()
