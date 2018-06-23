@@ -517,9 +517,9 @@ namespace MapTool
 
         private string ApplyArithmeticOp(string value, string opType, string operand, bool useDouble)
         {
-            bool success = Double.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out double valueDouble);
-            double operandDouble = Conversion.GetDoubleFromString(operand, 0);
-            if (success)
+            bool valueAvailable = Double.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out double valueDouble);
+            bool operandAvailable = Double.TryParse(operand, NumberStyles.Number, CultureInfo.InvariantCulture, out double operandDouble);
+            if (valueAvailable)
             {
                 switch (opType)
                 {
@@ -530,7 +530,7 @@ namespace MapTool
                         valueDouble -= operandDouble;
                         break;
                     case "*":
-                        if (operandDouble == 0)
+                        if (!operandAvailable)
                             operandDouble = 1;
                         valueDouble = valueDouble * operandDouble;
                         break;
