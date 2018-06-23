@@ -201,3 +201,23 @@ Basic|Official|$GETVAL(SpecialFlags,DestroyableBridges)
 </pre>
 
 Sets the value of key 'Official' under section 'Basic' to the value of key 'DestroyableBridges' under section 'SpecialFlags'.
+
+**Example #6:**
+<pre>
+[SectionRules]
+Lighting|IonAmbient|$GETVAL(Lighting,Ambient,+,0.1)
+Lighting|IonRed|$GETVAL(Lighting,Red,-,0.1)
+Lighting|IonGreen|$GETVAL(Lighting,Green,*,0.5)
+Lighting|IonBlue|$GETVAL(Lighting,Green,/,0.25)
+Lighting|IonLevel|$GETVAL(Lighting,Level,*,0.2515,false)
+</pre>
+
+Sets the value of following keys under 'Lighting' to:
+
+'IonAmbient' to value of 'Ambient' plus 0.1.
+'IonRed' to value of 'Red' minus 0.1.
+'IonGreen' to value of 'Green' multiplied by 0.25.
+'IonBlue' to value of 'Blue' divided by 0.
+'IonLevel' to value of 'Level' multiplied by 0.2515 with fractional part of the result truncated.
+
+Negative values can be used for the operand. With / operator, using 0 is treated same way as 1.
