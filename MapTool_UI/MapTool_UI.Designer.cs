@@ -58,13 +58,13 @@ namespace MapTool_UI
             this.tabPageLogger = new System.Windows.Forms.TabPage();
             this.textBoxLogger = new System.Windows.Forms.RichTextBox();
             this.tabPageAbout = new System.Windows.Forms.TabPage();
+            this.label1 = new System.Windows.Forms.Label();
+            this.labelSpecialThanks = new System.Windows.Forms.Label();
             this.linkLabelRenderer = new System.Windows.Forms.LinkLabel();
             this.linkLabelAboutOpenRA = new System.Windows.Forms.LinkLabel();
             this.labelAboutOSCode = new System.Windows.Forms.Label();
             this.linkLabelAboutGithub = new System.Windows.Forms.LinkLabel();
             this.labelAboutCopyright = new System.Windows.Forms.Label();
-            this.labelSpecialThanks = new System.Windows.Forms.Label();
-            this.label1 = new System.Windows.Forms.Label();
             this.tabControl.SuspendLayout();
             this.tabPageMain.SuspendLayout();
             this.tabPageLogger.SuspendLayout();
@@ -273,6 +273,25 @@ namespace MapTool_UI
             this.tabPageAbout.Text = "About";
             this.tabPageAbout.UseVisualStyleBackColor = true;
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(11, 166);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(387, 26);
+            this.label1.TabIndex = 6;
+            this.label1.Text = "E1 Elite (Implemented IsoMapPack5 optimization and ice growth fix features and \r\n" +
+    "created several TS conversion profiles included with releases)";
+            // 
+            // labelSpecialThanks
+            // 
+            this.labelSpecialThanks.AutoSize = true;
+            this.labelSpecialThanks.Location = new System.Drawing.Point(8, 146);
+            this.labelSpecialThanks.Name = "labelSpecialThanks";
+            this.labelSpecialThanks.Size = new System.Drawing.Size(182, 13);
+            this.labelSpecialThanks.TabIndex = 5;
+            this.labelSpecialThanks.Text = "Additional thanks to following people:";
+            // 
             // linkLabelRenderer
             // 
             this.linkLabelRenderer.AutoSize = true;
@@ -327,24 +346,6 @@ namespace MapTool_UI
             this.labelAboutCopyright.Size = new System.Drawing.Size(166, 13);
             this.labelAboutCopyright.TabIndex = 0;
             this.labelAboutCopyright.Text = "Program by Starkku © 2017-2018";
-            // 
-            // labelSpecialThanks
-            // 
-            this.labelSpecialThanks.AutoSize = true;
-            this.labelSpecialThanks.Location = new System.Drawing.Point(8, 146);
-            this.labelSpecialThanks.Name = "labelSpecialThanks";
-            this.labelSpecialThanks.Size = new System.Drawing.Size(182, 13);
-            this.labelSpecialThanks.TabIndex = 5;
-            this.labelSpecialThanks.Text = "Additional thanks to following people:";
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(11, 166);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(340, 13);
-            this.label1.TabIndex = 6;
-            this.label1.Text = "E1 Elite (created several TS conversion profiles included with releases)";
             // 
             // MapTool_UI
             // 

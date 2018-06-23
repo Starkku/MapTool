@@ -17,6 +17,7 @@ using CNCMaps.FileFormats.VirtualFileSystem;
 using StarkkuUtils.FileTypes;
 using StarkkuUtils.Utilities;
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace MapTool
 {
@@ -484,22 +485,64 @@ namespace MapTool
                         {
                             if (!(values[2] == null || values[2] == "" || values[2] == "*"))
                             {
-                                if (values[2].StartsWith("$GETVAL") && values[2].Contains('(') && values[2].Contains(')'))
+                                if (values[2].Contains("$GETVAL("))
                                 {
-                                    string[] valdata = Regex.Match(values[2], @"\(([^)]*)\)").Groups[1].Value.Split(',');
+                                    string[] valdata = Regex.Match(values[2], @"\$GETVAL\(([^)]*)\)").Groups[1].Value.Split(',');
                                     if (valdata.Length > 1)
                                     {
                                         string newval = MapConfig.GetKey(valdata[0], valdata[1], null);
-                                        if (newval != null) newValue = newval;
+                                        if (newval != null)
+                                        {
+                                            newValue = newval;
+                                            if (valdata.Length > 3)
+                                            {
+                                                bool useDouble = true;
+                                                if (valdata.Length > 4)
+                                                    useDouble = Conversion.GetBoolFromString(valdata[4], true);
+                                                newValue = ApplyArithmeticOp(newValue, valdata[2], valdata[3], useDouble);
+                                            }
+                                        }
+
                                     }
                                 }
-                                else newValue = values[2];
+                                else
+                                    newValue = values[2];
                             }
                         }
                     }
                     currentRules.Add(new SectionConversionRule(originalSection, newSection, originalKey, newKey, newValue));
                 }
             }
+        }
+
+        private string ApplyArithmeticOp(string value, string opType, string operand, bool useDouble)
+        {
+            bool success = Double.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out double valueDouble);
+            double operandDouble = Conversion.GetDoubleFromString(operand, 0);
+            if (success)
+            {
+                switch (opType)
+                {
+                    case "+":
+                        valueDouble += operandDouble;
+                        break;
+                    case "-":
+                        valueDouble -= operandDouble;
+                        break;
+                    case "*":
+                        if (operandDouble == 0)
+                            operandDouble = 1;
+                        valueDouble = valueDouble * operandDouble;
+                        break;
+                    case "/":
+                        if (operandDouble == 0)
+                            operandDouble = 1;
+                        valueDouble = valueDouble / operandDouble;
+                        break;
+                }
+                return valueDouble.ToString(CultureInfo.InvariantCulture);
+            }
+            return value;
         }
 
         /// <summary>
@@ -566,7 +609,7 @@ namespace MapTool
                         if (rule.IsRandomizer)
                         {
                             int newindex = random.Next(rule.NewStartIndex, rule.NewEndIndex);
-                            Logger.Debug("Tile rule random range: [" + rule.NewStartIndex +"-" + rule.NewEndIndex+ "]. Picked: " + newindex);
+                            Logger.Debug("Tile rule random range: [" + rule.NewStartIndex + "-" + rule.NewEndIndex + "]. Picked: " + newindex);
                             if (newindex != tile.TileIndex)
                             {
                                 Logger.Debug("Tile ID " + tile.TileIndex + " at " + tile.X + "," + tile.Y + " changed to " + newindex);
@@ -582,7 +625,7 @@ namespace MapTool
                         }
                         else
                         {
-                            Logger.Debug("Tile ID " + tile.TileIndex + " at " + tile.X + "," + tile.Y + " changed to " + 
+                            Logger.Debug("Tile ID " + tile.TileIndex + " at " + tile.X + "," + tile.Y + " changed to " +
                                 (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - tile.TileIndex)));
                             tile.TileIndex = (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - tile.TileIndex));
                             break;
