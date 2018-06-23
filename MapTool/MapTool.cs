@@ -540,7 +540,10 @@ namespace MapTool
                         valueDouble = valueDouble / operandDouble;
                         break;
                 }
-                return valueDouble.ToString(CultureInfo.InvariantCulture);
+                if (useDouble)
+                    return valueDouble.ToString(CultureInfo.InvariantCulture);
+                else
+                    return ((int)valueDouble).ToString();
             }
             return value;
         }
