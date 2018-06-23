@@ -214,10 +214,10 @@ Lighting|IonLevel|$GETVAL(Lighting,Level,*,0.2515,false)
 
 Sets the value of following keys under 'Lighting' to:
 
-'IonAmbient' to value of 'Ambient' plus 0.1.
-'IonRed' to value of 'Red' minus 0.1.
-'IonGreen' to value of 'Green' multiplied by 0.25.
-'IonBlue' to value of 'Blue' divided by 0.
-'IonLevel' to value of 'Level' multiplied by 0.2515 with fractional part of the result truncated.
+'IonAmbient' to value of 'Ambient' plus 0.1.  
+'IonRed' to value of 'Red' minus 0.1.  
+'IonGreen' to value of 'Green' multiplied by 0.25.  
+'IonBlue' to value of 'Blue' divided by 0.  
+'IonLevel' to value of 'Level' multiplied by 0.2515 with fractional part of the result truncated.  
 
 Negative values can be used for the operand. With / operator, using 0 is treated same way as 1.
