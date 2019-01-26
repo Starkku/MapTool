@@ -38,15 +38,15 @@ namespace MapTool
             set;
         }
 
-        private string FileInput;
-        private string FileOutput;
+        private readonly string FileInput;
+        private readonly string FileOutput;
 
         private INIFile MapConfig;                                                                // Map file.
         private string MapTheater = null;                                                         // Map theater data.
         private int Map_Width;
         private int Map_Height;
-        private int Map_FullWidth;
-        private int Map_FullHeight;
+        private readonly int Map_FullWidth;
+        private readonly int Map_FullHeight;
         private List<MapTileContainer> IsoMapPack5 = new List<MapTileContainer>();                // Map tile data.
         private byte[] OverlayPack = null;                                                        // Map overlay ID data.
         private byte[] OverlayDataPack = null;                                                    // Map overlay frame data.
@@ -60,12 +60,13 @@ namespace MapTool
         private List<SectionConversionRule> SectionRules = new List<SectionConversionRule>();     // Conversion profile section rules.
 
         // Map modify options.
-        private bool UseMapOptimize = false;
-        private bool UseMapCompress = false;
+        private readonly bool UseMapOptimize = false;
+        private readonly bool UseMapCompress = false;
+        private readonly bool DeleteObjectsOutsideMapBounds = false;
+        private readonly bool RemoveLevel0ClearTiles = false;
+        private readonly string IceGrowthFixUseBuilding = null;
+        private readonly bool IceGrowthFixReset = false;
         private string IsoMapPack5SortBy = null;
-        private bool RemoveLevel0ClearTiles = false;
-        private string IceGrowthFixUseBuilding = null;
-        private bool IceGrowthFixReset = false;
 
         private INIFile TheaterConfig;                                                            // Theater config INI file.
 
@@ -83,7 +84,7 @@ namespace MapTool
             FileInput = inputFile;
             FileOutput = outputFile;
 
-            if (listTheaterData && !String.IsNullOrEmpty(FileInput))
+            if (listTheaterData && !string.IsNullOrEmpty(FileInput))
             {
                 TheaterConfig = new INIFile(FileInput);
                 if (!TheaterConfig.Initialized)
@@ -93,7 +94,7 @@ namespace MapTool
                 }
             }
 
-            else if (!String.IsNullOrEmpty(FileInput) && !String.IsNullOrEmpty(FileOutput))
+            else if (!string.IsNullOrEmpty(FileInput) && !string.IsNullOrEmpty(FileOutput))
             {
 
                 Logger.Info("Reading map file '" + inputFile + "'.");
@@ -117,7 +118,7 @@ namespace MapTool
                     Logger.Info("Parsing conversion profile file.");
 
                     string include_string = ProfileConfig.GetKey("ProfileData", "IncludeFiles", null);
-                    if (!String.IsNullOrEmpty(include_string))
+                    if (!string.IsNullOrEmpty(include_string))
                     {
                         string[] include_files = include_string.Split(',');
                         string basedir = Path.GetDirectoryName(fileConfig);
@@ -141,6 +142,8 @@ namespace MapTool
                     RemoveLevel0ClearTiles = Conversion.GetBoolFromString(ProfileConfig.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false"), false);
                     IceGrowthFixUseBuilding = ProfileConfig.GetKey("IsoMapPack5", "IceGrowthFixUseBuilding", null);
                     IceGrowthFixReset = Conversion.GetBoolFromString(ProfileConfig.GetKey("IsoMapPack5", "IceGrowthFixReset", "false"), false);
+                    DeleteObjectsOutsideMapBounds = Conversion.GetBoolFromString(ProfileConfig.GetKey("ProfileData", "DeleteObjectsOutsideMapBounds",
+                        "false"), false);
 
                     string[] tilerules = null;
                     string[] overlayrules = null;
@@ -173,7 +176,8 @@ namespace MapTool
                     // Allow saving map without any other changes if either of these are set and ApplicableTheaters allows it.
                     if ((UseMapCompress || UseMapOptimize) && IsCurrentTheaterAllowed()) Altered = true;
 
-                    if (!Altered && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null && String.IsNullOrEmpty(NewTheater))
+                    if (!Altered && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null &&
+                        string.IsNullOrEmpty(NewTheater))
                     {
                         Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
                         Initialized = false;
@@ -194,6 +198,12 @@ namespace MapTool
         /// </summary>
         public void Save()
         {
+            if (DeleteObjectsOutsideMapBounds)
+            {
+                Logger.Info("DeleteObjectsOutsideMapBounds set: Deleting objects & overlay outside map bounds.");
+                DeleteOverlaysOutsideBounds();
+                DeleteObjectsOutsideBounds();
+            }
             if (UseMapOptimize)
             {
                 Logger.Info("ApplyMapOptimization set: Saved map will have map section order optimizations applied.");
@@ -206,6 +216,7 @@ namespace MapTool
             MapConfig.Save(FileOutput, !UseMapCompress);
         }
 
+
         /// <summary>
         /// Checks if theater name is valid.
         /// </summary>
@@ -213,7 +224,8 @@ namespace MapTool
         /// <returns>True if a valid theater name, otherwise false.</returns>
         public static bool IsValidTheaterName(string theaterName)
         {
-            if (theaterName == "TEMPERATE" || theaterName == "SNOW" || theaterName == "LUNAR" || theaterName == "DESERT" || theaterName == "URBAN" || theaterName == "NEWURBAN") return true;
+            if (theaterName == "TEMPERATE" || theaterName == "SNOW" || theaterName == "LUNAR" || theaterName == "DESERT" ||
+                theaterName == "URBAN" || theaterName == "NEWURBAN") return true;
             return false;
         }
 
@@ -237,7 +249,7 @@ namespace MapTool
             string data = "";
             string[] tmp = MapConfig.GetValues("IsoMapPack5");
             if (tmp == null || tmp.Length < 1) return false;
-            data = String.Join("", tmp);
+            data = string.Join("", tmp);
             int cells;
             byte[] isoMapPack;
             try
@@ -294,14 +306,14 @@ namespace MapTool
             Logger.Info("Parsing OverlayPack.");
             string[] values = MapConfig.GetValues("OverlayPack");
             if (values == null || values.Length < 1) return;
-            byte[] format80Data = Convert.FromBase64String(String.Join("", values));
+            byte[] format80Data = Convert.FromBase64String(string.Join("", values));
             var overlaypack = new byte[1 << 18];
             Format5.DecodeInto(format80Data, overlaypack, 80);
 
             Logger.Info("Parsing OverlayDataPack.");
             values = MapConfig.GetValues("OverlayDataPack");
             if (values == null || values.Length < 1) return;
-            format80Data = Convert.FromBase64String(String.Join("", values));
+            format80Data = Convert.FromBase64String(string.Join("", values));
             var overlaydatapack = new byte[1 << 18];
             Format5.DecodeInto(format80Data, overlaydatapack, 80);
 
@@ -334,7 +346,7 @@ namespace MapTool
             {
                 lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
             }
-            MapConfig.ReplaceSectionValues(sectionName, lines);
+            MapConfig.ReplaceSectionKeysAndValues(sectionName, lines);
         }
 
         /// <summary>
@@ -470,7 +482,8 @@ namespace MapTool
                     string[] sec = values[0].Split('=');
                     if (sec == null || sec.Length < 1) continue;
                     originalSection = sec[0];
-                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') && String.IsNullOrEmpty(sec[1])) newSection = null;
+                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') &&
+                        string.IsNullOrEmpty(sec[1])) newSection = null;
                     else if (sec.Length > 1) newSection = sec[1];
                     if (values.Length > 1)
                     {
@@ -478,7 +491,8 @@ namespace MapTool
                         if (key != null && key.Length > 0)
                         {
                             originalKey = key[0];
-                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') && String.IsNullOrEmpty(key[1])) newKey = null;
+                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') &&
+                                string.IsNullOrEmpty(key[1])) newKey = null;
                             else if (key.Length > 1) newKey = key[1];
                         }
                         if (values.Length > 2)
@@ -517,8 +531,8 @@ namespace MapTool
 
         private string ApplyArithmeticOp(string value, string opType, string operand, bool useDouble)
         {
-            bool valueAvailable = Double.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out double valueDouble);
-            bool operandAvailable = Double.TryParse(operand, NumberStyles.Number, CultureInfo.InvariantCulture, out double operandDouble);
+            bool valueAvailable = double.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out double valueDouble);
+            bool operandAvailable = double.TryParse(operand, NumberStyles.Number, CultureInfo.InvariantCulture, out double operandDouble);
             if (valueAvailable)
             {
                 switch (opType)
@@ -553,7 +567,7 @@ namespace MapTool
         /// </summary>
         public void ConvertTheaterData()
         {
-            if (!Initialized || String.IsNullOrEmpty(NewTheater)) return;
+            if (!Initialized || string.IsNullOrEmpty(NewTheater)) return;
             else if (!IsCurrentTheaterAllowed())
             {
                 Logger.Warn("Skipping altering theater data - ApplicableTheaters does not contain entry matching map theater.");
@@ -592,7 +606,6 @@ namespace MapTool
             List<MapTileContainer> tilesetSorted = new List<MapTileContainer>();
             List<Tuple<short, short>> tilesXY = new List<Tuple<short, short>>();
             Random random = new Random();
-
             // Apply tile conversion rules
             foreach (MapTileContainer tile in IsoMapPack5)
             {
@@ -662,7 +675,8 @@ namespace MapTool
             if (IceGrowthFixReset)
                 Logger.Info("IceGrowthFixReset set: Will attempt to disable ice growth for entire map.");
             else if (tilesXY.Count > 0)
-                Logger.Info("IceGrowthFixUseBuilding set: Will attempt to enable ice growth for tiles with coordinates from building ID: " + IceGrowthFixUseBuilding);
+                Logger.Info("IceGrowthFixUseBuilding set: Will attempt to enable ice growth for tiles with coordinates from building ID: " +
+                    IceGrowthFixUseBuilding);
             else if (IceGrowthFixUseBuilding != null && tilesXY.Count < 1)
                 Logger.Warn("IceGrowthFixUseBuilding is set but no instances of the building were found on the map.");
 
@@ -830,7 +844,8 @@ namespace MapTool
                         }
                         else
                         {
-                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" + (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i])) + "'.");
+                            Logger.Debug("Overlay ID '" + OverlayPack[i] + " at array slot " + i + "' changed to '" +
+                                (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i])) + "'.");
                             OverlayPack[i] = (byte)(rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - OverlayPack[i]));
                             break;
                         }
@@ -846,7 +861,11 @@ namespace MapTool
         public void ConvertObjectData()
         {
             if (!Initialized || OverlayRules == null || ObjectRules.Count < 1) return;
-            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater)) { Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the object data."); return; }
+            else if (MapTheater != null && ApplicableTheaters != null && !ApplicableTheaters.Contains(MapTheater))
+            {
+                Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the object data.");
+                return;
+            }
             Logger.Info("Attempting to modify object data of the map file.");
             ApplyObjectConversionRules("Aircraft");
             ApplyObjectConversionRules("Units");
@@ -861,7 +880,7 @@ namespace MapTool
         /// <param name="sectionName">ID of the object list section to apply the rules to.</param>
         private void ApplyObjectConversionRules(string sectionName)
         {
-            if (String.IsNullOrEmpty(sectionName)) return;
+            if (string.IsNullOrEmpty(sectionName)) return;
             KeyValuePair<string, string>[] kvps = MapConfig.GetKeyValuePairs(sectionName);
             if (kvps == null) return;
             foreach (KeyValuePair<string, string> kvp in kvps)
@@ -888,6 +907,64 @@ namespace MapTool
             }
         }
 
+        private void DeleteObjectsOutsideBounds()
+        {
+            DeleteObjectsOutsideBoundsFromSection("Units");
+            DeleteObjectsOutsideBoundsFromSection("Infantry");
+            DeleteObjectsOutsideBoundsFromSection("Units");
+            DeleteObjectsOutsideBoundsFromSection("Structures");
+
+            string[] keys = MapConfig.GetKeys("Terrain");
+            List<string> matchingKeys = new List<string>();
+            foreach (MapTileContainer tile in IsoMapPack5)
+            {
+                string key = (tile.X + (1000 * tile.Y)).ToString();
+                if (keys.Contains(key))
+                    matchingKeys.Add(key);
+            }
+            foreach (string key in keys)
+            {
+                if (!matchingKeys.Contains(key))
+                {
+                    MapConfig.RemoveKey("Terrain", key);
+                }
+            }
+        }
+
+        private void DeleteObjectsOutsideBoundsFromSection(string sectionName)
+        {
+            string[] keys = MapConfig.GetKeys(sectionName);
+            if (keys == null) return;
+            foreach (string key in keys)
+            {
+                string[] tmp = MapConfig.GetKey(sectionName, key, "").Split(',');
+                if (tmp.Length < 5)
+                    continue;
+                int X = Conversion.GetIntFromString(tmp[3], -1);
+                int Y = Conversion.GetIntFromString(tmp[4], -1);
+                if (X < 0 || Y < 0)
+                    continue;
+                MapTileContainer tile = IsoMapPack5.Find(x => x.X == X && x.Y == Y);
+                if (tile == null)
+                    MapConfig.RemoveKey(sectionName, key);
+            }
+        }
+
+        private void DeleteOverlaysOutsideBounds()
+        {
+            byte[] newOverlayPack = Enumerable.Repeat<byte>(255, OverlayPack.Length).ToArray();
+            byte[] newOverlayDataPack = Enumerable.Repeat<byte>(0, OverlayDataPack.Length).ToArray();
+            foreach (MapTileContainer tile in IsoMapPack5)
+            {
+                int index = tile.X + (512 * tile.Y);
+                newOverlayPack[index] = OverlayPack[index];
+                newOverlayDataPack[index] = OverlayDataPack[index];
+            }
+            OverlayPack = newOverlayPack;
+            OverlayDataPack = newOverlayDataPack;
+            SaveOverlayPack();
+        }
+
         /// <summary>
         /// Changes section data of current map based on conversion profile.
         /// </summary>
@@ -910,7 +987,7 @@ namespace MapTool
         {
             foreach (SectionConversionRule rule in SectionRules)
             {
-                if (String.IsNullOrEmpty(rule.OriginalSection)) continue;
+                if (string.IsNullOrEmpty(rule.OriginalSection)) continue;
 
                 string currentSection = rule.OriginalSection;
                 if (rule.NewSection == null)
@@ -974,7 +1051,8 @@ namespace MapTool
 
             TilesetCollection mtiles = TilesetCollection.ParseFromINIFile(TheaterConfig);
 
-            if (mtiles == null || mtiles.Count < 1) { Logger.Error("Could not parse tileset data from theater configuration file '" + TheaterConfig.Filename + "'."); return; };
+            if (mtiles == null || mtiles.Count < 1) { Logger.Error("Could not parse tileset data from theater configuration file '" + 
+                TheaterConfig.Filename + "'."); return; };
 
             Logger.Info("Attempting to list tileset data for a theater based on file: '" + TheaterConfig.Filename + "'.");
             List<string> lines = new List<string>();

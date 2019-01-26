@@ -56,7 +56,7 @@ namespace MapTool
                 ShowHelp();
                 return;
             }
-            if (String.IsNullOrEmpty(settings.FileConfig) && !settings.List)
+            if (string.IsNullOrEmpty(settings.FileConfig) && !settings.List)
             {
                 Logger.Error("Not enough parameters. Must provide either -l or -p.");
                 ShowHelp();
@@ -70,13 +70,13 @@ namespace MapTool
             {
                 Logger.Info("Mode set (-p): Apply Conversion Profile.");
             }
-            if (String.IsNullOrEmpty(settings.FileInput))
+            if (string.IsNullOrEmpty(settings.FileInput))
             {
                 Logger.Error("No valid input file specified.");
                 ShowHelp();
                 error = true;
             }
-            else if (!String.IsNullOrEmpty(settings.FileInput) && !File.Exists(settings.FileInput))
+            else if (!string.IsNullOrEmpty(settings.FileInput) && !File.Exists(settings.FileInput))
             {
                 Logger.Error("Specified input file does not exist.");
                 ShowHelp();
@@ -86,7 +86,7 @@ namespace MapTool
             else Logger.Info("Input file path OK.");
             if (settings.List)
             {
-                if (String.IsNullOrEmpty(settings.FileOutput))
+                if (string.IsNullOrEmpty(settings.FileOutput))
                 {
                     Logger.Warn("No output file available. Using input as output.");
                     settings.FileOutput = Path.ChangeExtension(settings.FileInput, ".txt");
@@ -133,15 +133,15 @@ namespace MapTool
         /// <summary>
         /// Initializes the logger.
         /// </summary>
-        /// <param name="writefile">Set to yes to write a log file.</param>
-        private static void InitLogger(bool writefile = false)
+        /// <param name="writeFile">Set to yes to write a log file.</param>
+        private static void InitLogger(bool writeFile = false)
         {
             string filename = AppDomain.CurrentDomain.BaseDirectory + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) + ".log";
-            bool enabledebug = false;
+            bool enableDebugLogging = false;
 #if DEBUG
             enabledebug = true;
 #endif
-            Logger.Initialize(filename, writefile, enabledebug);
+            Logger.Initialize(filename, writeFile, enableDebugLogging);
         }
 
         /// <summary>
