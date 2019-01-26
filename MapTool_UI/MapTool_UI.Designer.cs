@@ -65,6 +65,7 @@ namespace MapTool_UI
             this.labelAboutOSCode = new System.Windows.Forms.Label();
             this.linkLabelAboutGithub = new System.Windows.Forms.LinkLabel();
             this.labelAboutCopyright = new System.Windows.Forms.Label();
+            this.linkLabel1 = new System.Windows.Forms.LinkLabel();
             this.tabControl.SuspendLayout();
             this.tabPageMain.SuspendLayout();
             this.tabPageLogger.SuspendLayout();
@@ -259,6 +260,7 @@ namespace MapTool_UI
             // 
             // tabPageAbout
             // 
+            this.tabPageAbout.Controls.Add(this.linkLabel1);
             this.tabPageAbout.Controls.Add(this.label1);
             this.tabPageAbout.Controls.Add(this.labelSpecialThanks);
             this.tabPageAbout.Controls.Add(this.linkLabelRenderer);
@@ -276,7 +278,7 @@ namespace MapTool_UI
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(11, 166);
+            this.label1.Location = new System.Drawing.Point(11, 195);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(387, 26);
             this.label1.TabIndex = 6;
@@ -286,7 +288,7 @@ namespace MapTool_UI
             // labelSpecialThanks
             // 
             this.labelSpecialThanks.AutoSize = true;
-            this.labelSpecialThanks.Location = new System.Drawing.Point(8, 146);
+            this.labelSpecialThanks.Location = new System.Drawing.Point(8, 168);
             this.labelSpecialThanks.Name = "labelSpecialThanks";
             this.labelSpecialThanks.Size = new System.Drawing.Size(182, 13);
             this.labelSpecialThanks.TabIndex = 5;
@@ -347,6 +349,18 @@ namespace MapTool_UI
             this.labelAboutCopyright.TabIndex = 0;
             this.labelAboutCopyright.Text = "Program by Starkku © 2017-2018";
             // 
+            // linkLabel1
+            // 
+            this.linkLabel1.AutoSize = true;
+            this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(30, 43);
+            this.linkLabel1.Location = new System.Drawing.Point(8, 134);
+            this.linkLabel1.Name = "linkLabel1";
+            this.linkLabel1.Size = new System.Drawing.Size(394, 17);
+            this.linkLabel1.TabIndex = 7;
+            this.linkLabel1.TabStop = true;
+            this.linkLabel1.Text = "Rampastring\'s Tunnel Fixer - (https://ppmforums.com/viewtopic.php?t=42008)";
+            this.linkLabel1.UseCompatibleTextRendering = true;
+            // 
             // MapTool_UI
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
@@ -399,6 +413,7 @@ namespace MapTool_UI
         private System.Windows.Forms.LinkLabel linkLabelRenderer;
         private System.Windows.Forms.Label labelSpecialThanks;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.LinkLabel linkLabel1;
     }
 }
 

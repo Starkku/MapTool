@@ -29,6 +29,7 @@ MapTool uses code from the following open-source projects to make it's functiona
 
 * CnCMaps Renderer by Frank Razenberg - http://github.com/zzattack/ccmaps-net
 * OpenRA by [OpenRA Authors](https://raw.github.com/OpenRA/OpenRA/master/AUTHORS) - http://github.com/OpenRA/OpenRA
+* FinalSun Tunnel Fixer by Rampastring - https://ppmforums.com/viewtopic.php?t=42008
 
 Additionally thanks to [E1 Elite](https://ppmforums.com/profile.php?mode=viewprofile&u=7356) for writing several conversion profile files to use with Command & Conquer: Tiberian Sun and implementing IsoMapPack5 optimization & ice growth fix features.
 
