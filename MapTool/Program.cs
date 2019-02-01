@@ -139,7 +139,7 @@ namespace MapTool
             string filename = AppDomain.CurrentDomain.BaseDirectory + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) + ".log";
             bool enableDebugLogging = false;
 #if DEBUG
-            enabledebug = true;
+            enableDebugLogging = true;
 #endif
             Logger.Initialize(filename, writeFile, enableDebugLogging);
         }

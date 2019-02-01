@@ -192,6 +192,7 @@ namespace MapTool
                     ParseConfigFile(sectionrules, SectionRules);
                 }
             }
+
             Initialized = true;
         }
 
@@ -222,6 +223,7 @@ namespace MapTool
                 Logger.Info("ApplyMapCompress set: Saved map will have no unnecessary whitespaces or comments.");
             MapConfig.Save(FileOutput, !UseMapCompress, !UseMapCompress);
         }
+
         /// <summary>
         /// Checks if theater name is valid.
         /// </summary>
