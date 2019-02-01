@@ -151,10 +151,10 @@ namespace MapTool
                     string[] objectrules = null;
                     string[] sectionrules = null;
 
-                    if (ProfileConfig.SectionExists("TileRules")) tilerules = ProfileConfig.GetValues("TileRules");
-                    if (ProfileConfig.SectionExists("OverlayRules")) overlayrules = ProfileConfig.GetValues("OverlayRules");
-                    if (ProfileConfig.SectionExists("ObjectRules")) objectrules = ProfileConfig.GetValues("ObjectRules");
-                    if (ProfileConfig.SectionExists("SectionRules")) sectionrules = MergeKeyValuePairs(ProfileConfig.GetKeyValuePairs("SectionRules"));
+                    tilerules = ProfileConfig.GetValues("TileRules");
+                    overlayrules = ProfileConfig.GetValues("OverlayRules");
+                    objectrules = ProfileConfig.GetValues("ObjectRules");
+                    sectionrules = MergeKeyValuePairs(ProfileConfig.GetKeyValuePairs("SectionRules"));
 
                     NewTheater = ProfileConfig.GetKey("TheaterRules", "NewTheater", null);
                     if (NewTheater != null)
@@ -181,7 +181,7 @@ namespace MapTool
                     if (!Altered && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null &&
                         string.IsNullOrEmpty(NewTheater))
                     {
-                        Logger.Error("No conversion rules to apply in conversion profile file. Aborting.");
+                        Logger.Error("No conversion rules to apply in the conversion profile file. Aborting.");
                         Initialized = false;
                         return;
                     }
@@ -1162,6 +1162,8 @@ namespace MapTool
         /// <returns>Array of strings made by merging the keys and values.</returns>
         private string[] MergeKeyValuePairs(KeyValuePair<string, string>[] keyValuePairs)
         {
+            if (keyValuePairs == null)
+                return null;
             string[] result = new string[keyValuePairs.Length];
             for (int i = 0; i < keyValuePairs.Length; i++)
             {
