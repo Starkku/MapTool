@@ -215,7 +215,7 @@ namespace MapTool
             }
             if (FixTunnels)
             {
-                Logger.Info("FixTubes set: Saved map will have [Tubes] section fixed to remove errors caused by map editor.");
+                Logger.Info("FixTunnels set: Saved map will have [Tubes] section fixed to remove errors caused by map editor.");
                 FixTubesSection();
             }
             if (UseMapCompress)
