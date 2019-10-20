@@ -47,8 +47,9 @@ namespace MapTool
             }
             InitLogger(settings.DebugLogging);
 
+#if !DEBUG
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
-
+#endif
             bool error = false;
 
             if (settings.ShowHelp)
@@ -92,10 +93,12 @@ namespace MapTool
                     settings.FileOutput = Path.ChangeExtension(settings.FileInput, ".txt");
                 }
             }
-            else Logger.Info("Output file path OK.");
+            else
+                Logger.Info("Output file path OK.");
 
             MapTool map = new MapTool(settings.FileInput, settings.FileOutput, settings.FileConfig, settings.List);
-            if (map.Initialized) Logger.Info("MapTool initialized.");
+            if (map.Initialized)
+                Logger.Info("MapTool initialized.");
             else
             {
                 Logger.Error("MapTool could not be initialized. Aborting.");
