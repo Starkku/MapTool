@@ -978,8 +978,15 @@ namespace MapTool
         /// </summary>
         private void DeleteOverlaysOutsideBounds()
         {
+            if (OverlayPack == null || OverlayDataPack == null)
+                ParseOverlayPack();
+
+            if (OverlayPack == null || OverlayDataPack == null)
+                return;
+
             byte[] newOverlayPack = Enumerable.Repeat<byte>(255, OverlayPack.Length).ToArray();
             byte[] newOverlayDataPack = Enumerable.Repeat<byte>(0, OverlayDataPack.Length).ToArray();
+
             foreach (MapTileContainer tile in IsoMapPack5)
             {
                 int index = tile.X + (512 * tile.Y);
