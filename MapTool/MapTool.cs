@@ -926,6 +926,8 @@ namespace MapTool
             DeleteObjectsOutsideBoundsFromSection("Structures");
 
             string[] keys = MapConfig.GetKeys("Terrain");
+            if (keys == null)
+                return;
             List<string> matchingKeys = new List<string>();
             foreach (MapTileContainer tile in IsoMapPack5)
             {
