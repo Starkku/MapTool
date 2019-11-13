@@ -46,6 +46,27 @@ A comma-separated list of theater ID's which must match with one declared in a m
 
 A single theater ID which is assigned on any processed maps. If omitted, defaults to processed map's theater.
 
+### TheaterTileOffsets
+
+List of global tile offsets per theater, used for shifting the tile indices when applying tile conversion rules.
+
+**Example #1:**
+<pre>
+[TheaterTileOffsets]
+TEMPERATE=0
+SNOW=500
+</pre>
+
+When applying rules to maps of TEMPERATE theater, no shifting will be done. When applying rules to maps of SNOW theater, every tile index in processed TileRules will have 500 added to it.
+
+**Example #2:**
+<pre>
+[TheaterTileOffsets]
+DESERT=250,-250
+</pre>
+
+When applying rules to maps of DESERT theater, the original tile indices in processed TileRules will have 250 added to them, and the new tile indices will have 250 deducted from them.
+
 ### IsoMapPack5
 
 Do note that effects of both SortBy and RemoveLevel0ClearTiles are removed when a map is opened and saved in a map editor (Final Alert 2 / FinalSun).
