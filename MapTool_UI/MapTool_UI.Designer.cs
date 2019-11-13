@@ -347,7 +347,7 @@ namespace MapTool_UI
             this.labelAboutCopyright.Name = "labelAboutCopyright";
             this.labelAboutCopyright.Size = new System.Drawing.Size(166, 13);
             this.labelAboutCopyright.TabIndex = 0;
-            this.labelAboutCopyright.Text = "Program by Starkku © 2017-2018";
+            this.labelAboutCopyright.Text = "Program by Starkku © 2017-2019";
             // 
             // linkLabel1
             // 
