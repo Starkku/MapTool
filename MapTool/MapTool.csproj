@@ -85,6 +85,7 @@
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="ConversionRules.cs" />
+    <Compile Include="IsoMapPack5SortMode.cs" />
     <Compile Include="MapTileContainer.cs" />
     <Compile Include="MapTool.cs" />
     <Compile Include="Program.cs" />
