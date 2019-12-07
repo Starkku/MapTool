@@ -81,6 +81,10 @@ namespace MapTool
         /// Map overlay frame data.
         /// </summary>
         private byte[] overlayDataPack = null;
+        /// <summary>
+        /// Look-up table for map coordinate (X,Y) validity.
+        /// </summary>
+        private bool[,] CoordinateValidityLUT;
 
         /// <summary>
         /// Conversion profile INI file.
@@ -190,6 +194,7 @@ namespace MapTool
                 string[] size = mapINI.GetKey("Map", "Size", "").Split(',');
                 mapWidth = int.Parse(size[2]);
                 mapHeight = int.Parse(size[3]);
+                CalculateCoordinateValidity();
                 Initialized = ParseMapPack();
                 mapTheater = mapINI.GetKey("Map", "Theater", null);
                 if (mapTheater != null) mapTheater = mapTheater.ToUpper();
@@ -317,9 +322,9 @@ namespace MapTool
         {
             if (deleteObjectsOutsideMapBounds)
             {
-                Logger.Info("DeleteObjectsOutsideMapBounds set: Deleting objects & overlay outside map bounds.");
-                DeleteOverlaysOutsideBounds();
+                Logger.Info("DeleteObjectsOutsideMapBounds set: Deleting objects & overlays outside map bounds.");
                 DeleteObjectsOutsideBounds();
+                DeleteOverlaysOutsideBounds();
             }
             if (useMapOptimize)
             {
@@ -969,20 +974,20 @@ namespace MapTool
                             Logger.Debug("OverlayRules: Random range [" + rule.NewStartIndex + "-" + rule.NewEndIndex + "]. Picked: " + newindex);
                             if (newindex != overlayPack[i])
                             {
-                                Logger.Debug("OverlayRules: Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + newindex + "'.");
+                                Logger.Debug("OverlayRules: Overlay ID " + overlayPack[i] + " at array slot " + i + " changed to '" + newindex + ".");
                                 overlayPack[i] = newindex;
                             }
                             break;
                         }
                         else if (rule.NewEndIndex == rule.NewStartIndex)
                         {
-                            Logger.Debug("OverlayRules: Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" + rule.NewStartIndex + "'.");
+                            Logger.Debug("OverlayRules: Overlay ID " + overlayPack[i] + " at array slot " + i + " changed to " + rule.NewStartIndex + ".");
                             overlayPack[i] = (byte)rule.NewStartIndex;
                             break;
                         }
                         else
                         {
-                            Logger.Debug("OverlayRules: Overlay ID '" + overlayPack[i] + " at array slot " + i + "' changed to '" +
+                            Logger.Debug("OverlayRules: Overlay ID " + overlayPack[i] + " at array slot " + i + " changed to " +
                                 (rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - overlayPack[i])) + "'.");
                             overlayPack[i] = (byte)(rule.NewStartIndex + Math.Abs(rule.OriginalStartIndex - overlayPack[i]));
                             break;
@@ -1058,21 +1063,19 @@ namespace MapTool
             string[] keys = mapINI.GetKeys("Terrain");
             if (keys == null)
                 return;
-            List<string> matchingKeys = new List<string>();
-            foreach (MapTileContainer tile in isoMapPack5)
-            {
-                string key = (tile.X + (1000 * tile.Y)).ToString();
-                if (keys.Contains(key))
-                {
-                    matchingKeys.Add(key);
-                }
-            }
+
             foreach (string key in keys)
             {
-                if (!matchingKeys.Contains(key))
+                int coord = Conversion.GetIntFromString(key, -1);
+                if (coord < 0)
+                    continue;
+                int x = coord % 1000;
+                int y = (coord - x) / 1000;
+
+                if (!CoordinateExistsOnMap(x, y))
                 {
-                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed Terrain object with ID '" + mapINI.GetKey("Terrain", key, "") +
-                        "' from the map file, because it was out of map bounds.");
+                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed Terrain object " + mapINI.GetKey("Terrain", key, "") +
+                        " (key: " + key + ") from cell " + x + "," + y + ".");
                     mapINI.RemoveKey("Terrain", key);
                 }
             }
@@ -1091,15 +1094,15 @@ namespace MapTool
                 string[] tmp = mapINI.GetKey(sectionName, key, "").Split(',');
                 if (tmp.Length < 5)
                     continue;
-                int X = Conversion.GetIntFromString(tmp[3], -1);
-                int Y = Conversion.GetIntFromString(tmp[4], -1);
-                if (X < 0 || Y < 0)
+                int x = Conversion.GetIntFromString(tmp[3], -1);
+                int y = Conversion.GetIntFromString(tmp[4], -1);
+                if (x < 0 || y < 0)
                     continue;
-                MapTileContainer tile = isoMapPack5.Find(x => x.X == X && x.Y == Y);
-                if (tile == null)
+                if (!CoordinateExistsOnMap(x, y))
                 {
-                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed " + sectionName + " object with ID '" + mapINI.GetKey(sectionName, key, "") +
-                        "' from the map file, because it was out of map bounds.");
+                    string[] values = mapINI.GetKey(sectionName, key, "").Split(',');
+                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed " + sectionName + " object " + (values.Length > 1 ? values[1] : "???") +
+                        " (key: " + key + ") from cell " + x + "," + y + ".");
                     mapINI.RemoveKey(sectionName, key);
                 }
             }
@@ -1116,17 +1119,21 @@ namespace MapTool
             if (overlayPack == null || overlayDataPack == null)
                 return;
 
-            byte[] newOverlayPack = Enumerable.Repeat<byte>(255, overlayPack.Length).ToArray();
-            byte[] newOverlayDataPack = Enumerable.Repeat<byte>(0, overlayDataPack.Length).ToArray();
-
-            foreach (MapTileContainer tile in isoMapPack5)
+            for (int i = 0; i < overlayPack.Length; i++)
             {
-                int index = tile.X + (512 * tile.Y);
-                newOverlayPack[index] = overlayPack[index];
-                newOverlayDataPack[index] = overlayDataPack[index];
+                if (overlayPack[i] == 255)
+                    continue;
+                int x = i % 512;
+                int y = (i - x) / 512;
+
+                if (!CoordinateExistsOnMap(x, y))
+                {
+                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed overlay (index: " + overlayPack[i] + ") from cell " + x + "," + y + ".");
+                    overlayPack[i] = 255;
+                    overlayDataPack[i] = 0;
+                }
             }
-            overlayPack = newOverlayPack;
-            overlayDataPack = newOverlayDataPack;
+
             SaveOverlayPack();
         }
 
@@ -1258,6 +1265,50 @@ namespace MapTool
             if (sp.Length < 2) return false;
             if (sp[1].Equals(objectID)) return true;
             return false;
+        }
+
+        /// <summary>
+        /// Checks if location with given coordinates exists within map bounds.
+        /// </summary>
+        /// <param name="x">Location X coordinate.</param>
+        /// <param name="y">Location Y coordinate.</param>
+        /// <returns>True if location exists, false if not.</returns>
+        private bool CoordinateExistsOnMap(int x, int y)
+        {
+            try
+            {
+                return CoordinateValidityLUT[x, y];
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Calculates valid map coordinates from map width & height and creates a look-up table from them.
+        /// </summary>
+        private void CalculateCoordinateValidity()
+        {
+            CoordinateValidityLUT = new bool[mapWidth * 2, mapHeight * 2];
+            int c = 1;
+            for (int y = 1; y < mapHeight * 2; y++)
+            {
+                for (int x = mapWidth; x > mapWidth - c; x--)
+                {
+                    CoordinateValidityLUT[x, y] = true;
+                }
+                for (int x = mapWidth; x < mapWidth + c; x++)
+                {
+                    CoordinateValidityLUT[x, y] = true;
+                }
+                if (y == mapHeight)
+                    c++;
+                if (y < mapHeight)
+                    c++;
+                else
+                    c--;
+            }
         }
 
         /// <summary>
