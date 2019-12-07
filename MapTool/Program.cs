@@ -118,12 +118,8 @@ namespace MapTool
                 map.ConvertObjectData();
                 map.ConvertSectionData();
             }
-
-            if (map.Altered)
-            {
-                Logger.Info("Saving the modified map as '" + settings.FileOutput + "'.");
-                map.Save();
-            }
+            
+            map.Save();
         }
 
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
