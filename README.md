@@ -4,11 +4,11 @@ This program exists to apply conversion profiles, 'scripts' of sorts to map file
 
 Project Page:
 
-* http://github.com/starkku/maptool
+* http://github.com/starkku/MapTool
 
 Downloads: 
 
-* http://projectphantom.net/utils/maptool
+* https://github.com/Starkku/MapTool/releases
 
 ## Installation
 
