@@ -95,7 +95,7 @@ As a note, there is no way to set or view the ice growth flag in map editor, eit
 
 ### TileRules
 
-A list of tile index conversion rules, each on it's own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values.
+A list of tile index conversion rules, each on it's own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values. Can also be prefixed by a tile coordinate filter in brackets, _f.ex (X,Y)_.
 
 To assist in figuring out the numbers to use, MapTool can be run with command line parameter *-l* with a game theater configuration INI (such as temperat(md).ini) as input file to extract a listing of tiles and their tile indices to a plaintext output file.
 
@@ -150,9 +150,19 @@ Also worth noting is that if you declare sub-tile index override, you must also 
 
 This randomly assigns new tile index from range 25 to 45 to tiles 0-15, as well as all tile 16.
 
+**Example #7:**
+<pre>
+[TileRules]
+(25,50)0-15|25-40
+(32,*)16-20|50-54
+</pre>
+
+Tiles 0-15 will get converted to tiles 25-40, respectively, but only at specific tile coordinate X = 25, Y = 50.
+Tiles 16-20 will get converted to tiles 50-54, respectively, but only at specific tile coordinates where X = 32.
+
 ### OverlayRules
 
-A list of overlay ID conversion rules, each on it's own line with a | as a separator between source and destination value.
+A list of overlay ID conversion rules, each on it's own line with a | as a separator between source and destination value.  Can also be prefixed by a tile coordinate filter in brackets, _f.ex (X,Y)_.
 
 **Example:**
 <pre>
@@ -160,12 +170,20 @@ A list of overlay ID conversion rules, each on it's own line with a | as a separ
 0|5
 15|20~30
 16-19|20~30
+6|6|0-2|12
+8|8|0-255|0~50
+(25,50)20|52
+(32,*)31|53
 </pre>
 
-All overlays with ID 0 are converted to overlays with ID 5. Overlays with ID 15 are randomly assigned new ID from range of 20 to 30, likewise for overlays with ID in range of 16 to 19.
+Overlays with ID 0 are converted to overlays with ID 5.
+Overlays with ID 15 are randomly assigned new ID from range of 20 to 30, likewise for overlays with ID in range of 16 to 19.
+Overlays with ID 6 will have their frame data for frames 0 to 2 changed to 12.
+Overlays with ID 8 will have their frame data for frames 0 to 255 changed to randomly assigned value from 0 to 50.
+Overlay with ID 20 will be converted to overlay with ID 52, but only at tile coordinate where X = 25 and Y = 50.
+Overlay with ID 31 will be converted to overlay with ID 64, but only at tile coordinates where X = 32.
 
-Values from 0 to 254 are available for regular use. Using 255 as destination ID will remove overlays. Using 255 as source ID is not valid and results in the conversion rule being ignored.
-
+ID values from 0 to 254 are available for for regular use. Using 255 as destination ID will remove overlays. 255 as a source ID is ignored unless tile coordinate filter is in use. Frame values from 0 to 255 are available for use as both source and destination values.
 
 ### ObjectRules
 
