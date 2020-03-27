@@ -58,6 +58,7 @@ namespace MapTool_UI
             this.tabPageLogger = new System.Windows.Forms.TabPage();
             this.textBoxLogger = new System.Windows.Forms.RichTextBox();
             this.tabPageAbout = new System.Windows.Forms.TabPage();
+            this.linkLabel1 = new System.Windows.Forms.LinkLabel();
             this.label1 = new System.Windows.Forms.Label();
             this.labelSpecialThanks = new System.Windows.Forms.Label();
             this.linkLabelRenderer = new System.Windows.Forms.LinkLabel();
@@ -65,7 +66,6 @@ namespace MapTool_UI
             this.labelAboutOSCode = new System.Windows.Forms.Label();
             this.linkLabelAboutGithub = new System.Windows.Forms.LinkLabel();
             this.labelAboutCopyright = new System.Windows.Forms.Label();
-            this.linkLabel1 = new System.Windows.Forms.LinkLabel();
             this.tabControl.SuspendLayout();
             this.tabPageMain.SuspendLayout();
             this.tabPageLogger.SuspendLayout();
@@ -275,6 +275,18 @@ namespace MapTool_UI
             this.tabPageAbout.Text = "About";
             this.tabPageAbout.UseVisualStyleBackColor = true;
             // 
+            // linkLabel1
+            // 
+            this.linkLabel1.AutoSize = true;
+            this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(30, 43);
+            this.linkLabel1.Location = new System.Drawing.Point(8, 134);
+            this.linkLabel1.Name = "linkLabel1";
+            this.linkLabel1.Size = new System.Drawing.Size(394, 17);
+            this.linkLabel1.TabIndex = 7;
+            this.linkLabel1.TabStop = true;
+            this.linkLabel1.Text = "Rampastring\'s Tunnel Fixer - (https://ppmforums.com/viewtopic.php?t=42008)";
+            this.linkLabel1.UseCompatibleTextRendering = true;
+            // 
             // label1
             // 
             this.label1.AutoSize = true;
@@ -349,21 +361,10 @@ namespace MapTool_UI
             this.labelAboutCopyright.TabIndex = 0;
             this.labelAboutCopyright.Text = "Program by Starkku © 2017-2020";
             // 
-            // linkLabel1
-            // 
-            this.linkLabel1.AutoSize = true;
-            this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(30, 43);
-            this.linkLabel1.Location = new System.Drawing.Point(8, 134);
-            this.linkLabel1.Name = "linkLabel1";
-            this.linkLabel1.Size = new System.Drawing.Size(394, 17);
-            this.linkLabel1.TabIndex = 7;
-            this.linkLabel1.TabStop = true;
-            this.linkLabel1.Text = "Rampastring\'s Tunnel Fixer - (https://ppmforums.com/viewtopic.php?t=42008)";
-            this.linkLabel1.UseCompatibleTextRendering = true;
-            // 
             // MapTool_UI
             // 
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(421, 415);
             this.Controls.Add(this.tabControl);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
