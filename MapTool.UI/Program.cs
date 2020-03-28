@@ -10,7 +10,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace MapTool_UI
+namespace MapTool.UI
 {
     static class Program
     {
@@ -22,7 +22,7 @@ namespace MapTool_UI
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MapTool_UI(args));
+            Application.Run(new MapToolUI(args));
         }
     }
 }

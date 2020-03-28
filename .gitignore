@@ -1,9 +1,7 @@
-MapTool/obj
-MapTool_UI/obj
-MapTool/bin
-MapTool_UI/bin
+bin/
+obj/
 .vs
 *.user
 Testing
-Release
-maptool_changelog.txt
+Compiled
+Changelog.txt
