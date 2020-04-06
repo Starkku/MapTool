@@ -187,7 +187,6 @@ namespace MapTool
                 string[] size = mapINI.GetKey("Map", "Size", "").Split(',');
                 mapWidth = int.Parse(size[2]);
                 mapHeight = int.Parse(size[3]);
-                CalculateCoordinateValidity();
                 if (!ParseMapPack())
                 {
                     Logger.Error("Could not parse map tile data. Aborting.");
@@ -318,6 +317,7 @@ namespace MapTool
             if (deleteObjectsOutsideMapBounds)
             {
                 Logger.Info("DeleteObjectsOutsideMapBounds set: Objects & overlays outside map bounds will be deleted.");
+                CalculateCoordinateValidity();
                 DeleteObjectsOutsideBounds();
                 DeleteOverlaysOutsideBounds();
             }
@@ -1470,14 +1470,11 @@ namespace MapTool
         /// <returns>True if location exists, false if not.</returns>
         private bool CoordinateExistsOnMap(int x, int y)
         {
-            try
-            {
-                return CoordinateValidityLUT[x, y];
-            }
-            catch (Exception)
-            {
+            if (!Initialized || CoordinateValidityLUT == null ||
+                CoordinateValidityLUT.GetLength(0) >= x || CoordinateValidityLUT.GetLength(1) >= y)
                 return false;
-            }
+
+            return CoordinateValidityLUT[x, y];
         }
 
         /// <summary>
@@ -1485,24 +1482,24 @@ namespace MapTool
         /// </summary>
         private void CalculateCoordinateValidity()
         {
-            CoordinateValidityLUT = new bool[mapWidth * 2, mapHeight * 2];
-            int c = 1;
-            for (int y = 1; y < mapHeight * 2; y++)
+            Logger.Debug("Calculating map coordinate look-up table.");
+
+            int size = Math.Max(mapWidth, mapHeight) * 2 + 1;
+            CoordinateValidityLUT = new bool[size, size];
+
+            int yOffset = 0;
+            for (int col = 1; col <= mapWidth; col++)
             {
-                for (int x = mapWidth; x > mapWidth - c; x--)
+                int startY = mapWidth - yOffset;
+                for (int row = 0; row < mapHeight; row++)
                 {
+                    int x = col + row;
+                    int y = startY + row;
                     CoordinateValidityLUT[x, y] = true;
+                    if (col < mapWidth)
+                        CoordinateValidityLUT[x + 1, y] = true;
                 }
-                for (int x = mapWidth; x < mapWidth + c; x++)
-                {
-                    CoordinateValidityLUT[x, y] = true;
-                }
-                if (y == mapHeight)
-                    c++;
-                if (y < mapHeight)
-                    c++;
-                else
-                    c--;
+                yOffset += 1;
             }
         }
 
