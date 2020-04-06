@@ -49,11 +49,11 @@ namespace MapTool
         /// <summary>
         /// Map file.
         /// </summary>
-        private INIFile mapINI;
+        private readonly INIFile mapINI;
         /// <summary>
         /// Map theater.
         /// </summary>
-        private string mapTheater = null;
+        private readonly string mapTheater = null;
         /// <summary>
         /// Map local width.
         /// </summary>
@@ -90,35 +90,35 @@ namespace MapTool
         /// <summary>
         /// Conversion profile INI file.
         /// </summary>
-        private INIFile conversionProfileINI;
+        private readonly INIFile conversionProfileINI;
         /// <summary>
         /// Conversion profile applicable theaters.
         /// </summary>
-        private List<string> applicableTheaters = new List<string>();
+        private readonly List<string> applicableTheaters = new List<string>();
         /// <summary>
         /// Conversion profile theater-specific global tile offsets.
         /// </summary>
-        private Dictionary<string, Tuple<int, int>> theaterTileOffsets = new Dictionary<string, Tuple<int, int>>();
+        private readonly Dictionary<string, Tuple<int, int>> theaterTileOffsets = new Dictionary<string, Tuple<int, int>>();
         /// <summary>
         /// Conversion profile new theater.
         /// </summary>
-        private string newTheater = null;
+        private readonly string newTheater = null;
         /// <summary>
         /// Conversion profile tile rules.
         /// </summary>
-        private List<TileConversionRule> tileRules = new List<TileConversionRule>();
+        private readonly List<TileConversionRule> tileRules = new List<TileConversionRule>();
         /// <summary>
         /// Conversion profile overlay rules.
         /// </summary>
-        private List<OverlayConversionRule> overlayRules = new List<OverlayConversionRule>();
+        private readonly List<OverlayConversionRule> overlayRules = new List<OverlayConversionRule>();
         /// <summary>
         /// Conversion profile object rules.
         /// </summary>
-        private List<StringIDConversionRule> objectRules = new List<StringIDConversionRule>();
+        private readonly List<StringIDConversionRule> objectRules = new List<StringIDConversionRule>();
         /// <summary>
         /// // Conversion profile section rules.
         /// </summary>
-        private List<SectionConversionRule> sectionRules = new List<SectionConversionRule>();
+        private readonly List<SectionConversionRule> sectionRules = new List<SectionConversionRule>();
 
         /// <summary>
         /// Optimize output map file or not.
@@ -143,12 +143,12 @@ namespace MapTool
         /// <summary>
         /// Map tile data sort mode.
         /// </summary>
-        private IsoMapPack5SortMode isoMapPack5SortBy = IsoMapPack5SortMode.NotDefined;
+        private readonly IsoMapPack5SortMode isoMapPack5SortBy = IsoMapPack5SortMode.NotDefined;
 
         /// <summary>
         /// Theater configuration file.
         /// </summary>
-        private INIFile theaterConfigINI;
+        private readonly INIFile theaterConfigINI;
 
         /// <summary>
         /// OverlayPack/DataPack length.
