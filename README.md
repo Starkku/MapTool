@@ -4,7 +4,7 @@ This program exists to apply conversion profiles, 'scripts' of sorts to map file
 
 Project Page:
 
-* http://github.com/starkku/MapTool
+* http://github.com/Starkku/MapTool
 
 Downloads: 
 
@@ -35,4 +35,4 @@ Additionally thanks to [E1 Elite](https://ppmforums.com/profile.php?mode=viewpro
 
 ## License
 
-See [COPYING](https://github.com/starkku/maptool/blob/master/COPYING).
+See [COPYING](https://github.com/Starkku/MapTool/blob/master/COPYING).
