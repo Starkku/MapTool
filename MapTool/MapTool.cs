@@ -918,8 +918,8 @@ namespace MapTool
             }
 
             bool tileDataAltered = ApplyTileConversionRules();
-            tileDataAltered |= tileDataAltered || ApplyIsoMapPackFixes();
-            tileDataAltered |= tileDataAltered || SortIsoMapPack();
+            tileDataAltered |= ApplyIsoMapPackFixes() || tileDataAltered;
+            tileDataAltered |= SortIsoMapPack() || tileDataAltered;
 
             if (tileDataAltered)
                 SaveMapPack();
