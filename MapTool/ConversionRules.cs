@@ -60,14 +60,17 @@ namespace MapTool
 
         public int SubIndexOverride { get; private set; } = -1;
 
+        public int IceGrowthOverride { get; private set; } = -1;
+
         public override bool IsValid { get { return CheckValidity(); } }
 
         public TileConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex = -1, int newEndIndex = -1, 
-            bool isRandomizer = false, int heightOverride = -1, int subIndexOverride = -1, int coordinateFilterX = -1, int coordinateFilterY = -1) :
+            bool isRandomizer = false, int heightOverride = -1, int subIndexOverride = -1, int iceGrowthOverride = -1, int coordinateFilterX = -1, int coordinateFilterY = -1) :
             base(originalStartIndex, newStartIndex, originalEndIndex, newEndIndex, isRandomizer, coordinateFilterX, coordinateFilterY)
         {
             HeightOverride = heightOverride;
             SubIndexOverride = subIndexOverride;
+            IceGrowthOverride = iceGrowthOverride;
         }
 
         public TileConversionRule() : base()

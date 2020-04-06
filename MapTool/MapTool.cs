@@ -137,18 +137,6 @@ namespace MapTool
         /// </summary>
         private readonly bool removeLevel0ClearTiles = false;
         /// <summary>
-        /// Building ID used to determine which tiles should have ice growth fix applied on them.
-        /// </summary>
-        private readonly string iceGrowthFixUseBuilding = null;
-        /// <summary>
-        /// List of tile coordinates to apply ice growth on.
-        /// </summary>
-        private readonly List<Tuple<short, short>> IceGrowthCoordinates = new List<Tuple<short, short>>();
-        /// <summary>
-        /// Reset ice growth data on all tiles or not.
-        /// </summary>
-        private readonly bool iceGrowthFixReset = false;
-        /// <summary>
         /// Fix tunnel data or not.
         /// </summary>
         private readonly bool fixTunnels = false;
@@ -250,9 +238,6 @@ namespace MapTool
                     Enum.TryParse(sortMode.Replace("_", ""), true, out isoMapPack5SortBy);
                 }
                 removeLevel0ClearTiles = Conversion.GetBoolFromString(conversionProfileINI.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false"), false);
-                iceGrowthFixUseBuilding = conversionProfileINI.GetKey("IsoMapPack5", "IceGrowthFixUseBuilding", null);
-                IceGrowthCoordinates = GetIceGrowthBuildingCoordinates();
-                iceGrowthFixReset = Conversion.GetBoolFromString(conversionProfileINI.GetKey("IsoMapPack5", "IceGrowthFixReset", "false"), false);
 
                 // Parse theater rules.
                 newTheater = conversionProfileINI.GetKey("TheaterRules", "NewTheater", null);
@@ -306,8 +291,7 @@ namespace MapTool
 
                 // Allow saving map without any other changes if either of these are set and ApplicableTheaters allows it.
                 bool allowSaving = (useMapCompress || useMapOptimize || deleteObjectsOutsideMapBounds || fixTunnels ||
-                    isoMapPack5SortBy != IsoMapPack5SortMode.NotDefined || iceGrowthFixReset ||
-                    (!string.IsNullOrEmpty(iceGrowthFixUseBuilding) && IceGrowthCoordinates.Count > 0)) && IsCurrentTheaterAllowed();
+                    isoMapPack5SortBy != IsoMapPack5SortMode.NotDefined) && IsCurrentTheaterAllowed();
 
                 if (!allowSaving && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null &&
                     string.IsNullOrEmpty(newTheater))
@@ -395,38 +379,6 @@ namespace MapTool
                 return false;
 
             return true;
-        }
-
-        /// <summary>
-        /// Gets tile coordinates of all instances of BuildingType defined in IceGrowthFixUseBuilding.
-        /// </summary>
-        /// <returns>List of map coordinates where instances of ice growth building exists.</returns>
-        private List<Tuple<short, short>> GetIceGrowthBuildingCoordinates()
-        {
-            string[] buildings = mapINI.GetValues("Structures");
-            List<Tuple<short, short>> buildingCoordinates = new List<Tuple<short, short>>();
-
-            if (!string.IsNullOrEmpty(iceGrowthFixUseBuilding) && buildings != null && buildings.Length > 0)
-            {
-                foreach (string building in buildings)
-                {
-                    string[] values = building.Split(',');
-                    if (values != null && values.Length > 1)
-                    {
-                        string buildingID = values[1].Trim();
-                        if (buildingID != "" && buildingID == iceGrowthFixUseBuilding)
-                        {
-                            short x = Conversion.GetShortFromString(values[3], -1);
-                            short y = Conversion.GetShortFromString(values[4], -1);
-                            if (x == -1 || y == -1)
-                                continue;
-                            buildingCoordinates.Add(new Tuple<short, short>(x, y));
-                        }
-                    }
-                }
-            }
-
-            return buildingCoordinates;
         }
 
         /// <summary>
@@ -598,6 +550,7 @@ namespace MapTool
 
                 int heightOverride = -1;
                 int subTileOverride = -1;
+                int iceGrowthOverride = -1;
                 if (values.Length >= 3 && values[2] != null && !values[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
                     heightOverride = Conversion.GetIntFromString(values[2], -1);
@@ -606,19 +559,23 @@ namespace MapTool
                 {
                     subTileOverride = Conversion.GetIntFromString(values[3], -1);
                 }
+                if (values.Length >= 5 && values[4] != null && !values[4].Equals("*", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    iceGrowthOverride = Conversion.GetIntFromString(values[4], -1);
+                }
 
                 if (oldValueIsRange && !newValueIsRange)
                 {
                     int diff = newValueStart + (oldValueEnd - newValueStart);
-                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueEnd, diff, newValueIsRandom, heightOverride, subTileOverride, coordFilterX, coordFilterY));
+                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueEnd, diff, newValueIsRandom, heightOverride, subTileOverride, iceGrowthOverride, coordFilterX, coordFilterY));
                 }
                 else if (!oldValueIsRange && newValueIsRange)
                 {
-                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueStart, newValueEnd, newValueIsRandom, heightOverride, subTileOverride, coordFilterX, coordFilterY));
+                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueStart, newValueEnd, newValueIsRandom, heightOverride, subTileOverride, iceGrowthOverride, coordFilterX, coordFilterY));
                 }
                 else
                 {
-                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueEnd, newValueEnd, newValueIsRandom, heightOverride, subTileOverride, coordFilterX, coordFilterY));
+                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueEnd, newValueEnd, newValueIsRandom, heightOverride, subTileOverride, iceGrowthOverride, coordFilterX, coordFilterY));
                 }
             }
         }
@@ -918,7 +875,7 @@ namespace MapTool
             }
 
             bool tileDataAltered = ApplyTileConversionRules();
-            tileDataAltered |= ApplyIsoMapPackFixes() || tileDataAltered;
+            tileDataAltered |= RemoveLevel0ClearTiles() || tileDataAltered;
             tileDataAltered |= SortIsoMapPack() || tileDataAltered;
 
             if (tileDataAltered)
@@ -970,21 +927,41 @@ namespace MapTool
 
                     if (tile.TileIndex >= ruleOriginalStartIndex && tile.TileIndex <= ruleOriginalEndIndex)
                     {
-                        if (rule.HeightOverride >= 0)
+                        if (rule.HeightOverride > -1)
                         {
-                            tile.Level = (byte)Math.Min(rule.HeightOverride, 14);
+                            byte height = (byte)Math.Min(rule.HeightOverride, 14);
+                            if (tile.Level != height)
+                            {
+                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + "  - height changed from " + tile.Level + " to " + height + ".");
+                                tile.Level = height;
+                            }
                         }
-                        if (rule.SubIndexOverride >= 0)
+                        if (rule.SubIndexOverride > -1)
                         {
-                            tile.SubTileIndex = (byte)Math.Min(rule.SubIndexOverride, 255);
+                            byte subtileIndex = (byte)Math.Min(rule.SubIndexOverride, 255);
+                            if (tile.SubTileIndex != subtileIndex)
+                            {
+                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + " - sub tile index changed from " + tile.SubTileIndex + " to " + subtileIndex + ".");
+                                tile.SubTileIndex = subtileIndex;
+                            }
                         }
+                        if (rule.IceGrowthOverride > -1)
+                        {
+                            byte iceGrowth = Convert.ToByte(Convert.ToBoolean(rule.IceGrowthOverride));
+                            if (tile.IceGrowth != iceGrowth)
+                            {
+                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + " - ice growth flag changed from " + tile.IceGrowth + " to " + iceGrowth + ".");
+                                tile.IceGrowth = iceGrowth;
+                            }
+                        }
+
                         if (rule.IsRandomizer)
                         {
                             int newindex = random.Next(ruleNewStartIndex, ruleNewEndIndex);
                             Logger.Debug("TileRules: Tile rule random range: [" + ruleNewStartIndex + "-" + ruleNewEndIndex + "]. Picked: " + newindex);
                             if (newindex != tile.TileIndex)
                             {
-                                Logger.Debug("TileRules: Tile ID " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + " changed to " + newindex);
+                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + " - index changed to " + newindex);
                                 tile.TileIndex = newindex;
                                 tileDataAltered = true;
                             }
@@ -992,14 +969,14 @@ namespace MapTool
                         }
                         else if (ruleNewEndIndex == ruleNewStartIndex)
                         {
-                            Logger.Debug("TileRules: Tile ID " + tile.TileIndex + " at X: " + tile.X + ", Y: " + tile.Y + " changed to " + ruleNewStartIndex);
+                            Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y: " + tile.Y + " - index changed to " + ruleNewStartIndex);
                             tile.TileIndex = ruleNewStartIndex;
                             tileDataAltered = true;
                             break;
                         }
                         else
                         {
-                            Logger.Debug("TileRules: Tile ID " + tile.TileIndex + " at X: " + tile.X + ", Y: " + tile.Y + " changed to " +
+                            Logger.Debug("TileRules: Tile ID " + tile.TileIndex + " at X: " + tile.X + ", Y: " + tile.Y + " - index changed to " +
                                 (ruleNewStartIndex + Math.Abs(ruleOriginalStartIndex - tile.TileIndex)));
                             tile.TileIndex = ruleNewStartIndex + Math.Abs(ruleOriginalStartIndex - tile.TileIndex);
                             tileDataAltered = true;
@@ -1013,57 +990,27 @@ namespace MapTool
         }
 
         /// <summary>
-        /// Applies optional fixes to map pack data.
+        /// Removes level 0 clear tiles from IsoMapPack5 data.
         /// </summary>
         /// <returns>Returns true if tile data was changed, false if not.</returns>
-        private bool ApplyIsoMapPackFixes()
+        private bool RemoveLevel0ClearTiles()
         {
-            if (!Initialized)
+            if (!Initialized || !removeLevel0ClearTiles)
                 return false;
 
+            Logger.Info("RemoveLevel0ClearTiles set: All tile data with tile index & level set to 0 is removed.");
+
             List<MapTileContainer> removeTiles = new List<MapTileContainer>();
-            bool tileDataAltered = false;
 
-            if (iceGrowthFixReset)
-                Logger.Info("IceGrowthFixReset set: Ice growth will be disabled for the entire map.");
-            else if (IceGrowthCoordinates.Count > 0)
-                Logger.Info("IceGrowthFixUseBuilding set: Ice growth will be enabled for tiles sharing coordinates with building: " +
-                    iceGrowthFixUseBuilding);
-            else if (!string.IsNullOrEmpty(iceGrowthFixUseBuilding) && IceGrowthCoordinates.Count < 1)
-                Logger.Warn("IceGrowthFixUseBuilding is set but no instances of building " + iceGrowthFixUseBuilding + " were found on the map.");
-
-            if (removeLevel0ClearTiles)
-                Logger.Info("RemoveLevel0ClearTiles set: All tile data with tile index & level set to 0 is removed.");
-
-            // Fix for TS Snow Maps Ice Growth, FinalSun sets every IceGrowth byte to 0.
-            // Using a defined building to get a list of X, Y then to set IceGrowth to 1.
-            // Remove Height Level 0 Clear Tiles if set in profile.
             foreach (MapTileContainer tile in isoMapPack5)
             {
-                // Set IceGrowth byte to 1 for Ice Growth for specific tiles. If Reset, set all to 0
-                if (IceGrowthCoordinates.Count > 0)
-                {
-                    Tuple<short, short> exists = IceGrowthCoordinates.Find(s => s.Item1 == tile.X && s.Item2 == tile.Y);
-                    if (exists != null)
-                    {
-                        tile.IceGrowth = 1;
-                        tileDataAltered = true;
-                    }
-                }
-                if (iceGrowthFixReset)
-                {
-                    tile.IceGrowth = 0; //Overrides ice growth fix
-                    tileDataAltered = true;
-                }
-
-                if (removeLevel0ClearTiles && tile.TileIndex < 1 && tile.Level < 1 && tile.SubTileIndex < 1
-                    && tile.IceGrowth < 1)
+                if (tile.TileIndex < 1 && tile.Level < 1 && tile.SubTileIndex < 1 && tile.IceGrowth < 1)
                     removeTiles.Add(tile);
             }
 
             int removeCount = isoMapPack5.RemoveAll(x => removeTiles.Contains(x));
 
-            return removeCount > 0 || tileDataAltered;
+            return removeCount > 0;
         }
 
         /// <summary>

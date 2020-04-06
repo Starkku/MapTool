@@ -83,16 +83,6 @@ Good compression is achieved by using either **X\_LEVEL\_TILEINDEX** or **X\_TIL
 
 If set to yes / true, removes all clear tiles at lowest elevation level (0). Since game always fills cells that are missing tiles with clear tiles that have elevation level of 0, removing them from IsoMapPack5 is a way to trim down the size of a map file.
 
-#### IceGrowthFixReset
-
-If set to yes / true, this will disable ice growth for the entire map. This overrides IceGrowthFixUseBuilding, so omit or set to no / false if you wish to use that feature.
-
-#### IceGrowthFixUseBuilding
-
-A single BuildingType ID used to mark tiles which have such building placed on them on the map as tiles where ice is allowed to grow. It is recommended to use a 'dummy building' like TSTLAMP and place it on all ice tiles that should be allowed to regrow if damaged, as well as surrounding water tiles where ice should be allowed to grow / expand to.
-
-As a note, there is no way to set or view the ice growth flag in map editor, either for individual tiles or otherwise but it is kept for existing tiles if set upon loading and / or saving a map.
-
 ### TileRules
 
 A list of tile index conversion rules, each on it's own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values. Can also be prefixed by a tile coordinate filter in brackets, _f.ex (X,Y)_.
@@ -139,9 +129,19 @@ Adding a third value overrides the height of all of the applicable tiles with sp
 
 Fourth value serves as an override to tile's sub-tile index, serving to determine which particular piece of that tile is used for a map cell. It might be necessary to set the override to 0 if you are converting from tiles with more than one sub-tile to a tile with just one.
 
-Also worth noting is that if you declare sub-tile index override, you must also declare height override before it. Substituting the value with * retains the original height values in processed maps.
+If you declare sub-tile index override, you must also declare height override before it. Substituting the value with * retains the original height values in processed maps.
 
 **Example #6:**
+<pre>
+[TileRules]
+0-15|0-15|*|*|1
+</pre>
+
+Fifth value serves as an override to tile's ice growth flag. 0 means that ice growth is disabled, 1 means that is enabled. Values greater than 1 are interpreted as 1.
+
+If you declare ice growth flag override, you must also declare height override and sub-tile index override before it. Substituting the value with * retains the original height values and sub-tile index values in processed maps.
+
+**Example #7:**
 <pre>
 [TileRules]
 0-15|25~40
@@ -150,7 +150,7 @@ Also worth noting is that if you declare sub-tile index override, you must also 
 
 This randomly assigns new tile index from range 25 to 45 to tiles 0-15, as well as all tile 16.
 
-**Example #7:**
+**Example #8:**
 <pre>
 [TileRules]
 (25,50)0-15|25-40
