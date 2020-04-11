@@ -1471,7 +1471,7 @@ namespace MapTool
         private bool CoordinateExistsOnMap(int x, int y)
         {
             if (!Initialized || CoordinateValidityLUT == null ||
-                CoordinateValidityLUT.GetLength(0) >= x || CoordinateValidityLUT.GetLength(1) >= y)
+                CoordinateValidityLUT.GetLength(0) <= x || CoordinateValidityLUT.GetLength(1) <= y)
                 return false;
 
             return CoordinateValidityLUT[x, y];
