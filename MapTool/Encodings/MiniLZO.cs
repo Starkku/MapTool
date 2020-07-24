@@ -62,7 +62,7 @@
 
 using System;
 
-namespace CNCMaps.FileFormats.Encodings
+namespace MapTool.Encodings
 {
     public static class MiniLZO
     {

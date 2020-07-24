@@ -84,20 +84,17 @@
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="ConversionRules.cs" />
-    <Compile Include="IsoMapPack5SortMode.cs" />
-    <Compile Include="MapTileContainer.cs" />
+    <Compile Include="DataStructures\ConversionRules.cs" />
+    <Compile Include="DataStructures\MapTile.cs" />
     <Compile Include="MapTool.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TilesetCollection.cs" />
-    <Compile Include="Utility\Format5.cs" />
-    <Compile Include="Utility\Format80.cs" />
-    <Compile Include="Utility\MemoryFile.cs" />
-    <Compile Include="Utility\MiniLZO.cs" />
+    <Compile Include="DataStructures\Tileset.cs" />
+    <Compile Include="Encodings\LCW.cs" />
+    <Compile Include="MapPackHelper.cs" />
+    <Compile Include="Encodings\MiniLZO.cs" />
     <Compile Include="Utility\Options.cs" />
     <Compile Include="Utility\Settings.cs" />
-    <Compile Include="Utility\VirtualFile.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

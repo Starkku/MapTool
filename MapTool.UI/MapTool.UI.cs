@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2017 by Starkku
+ * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -26,7 +26,7 @@ namespace MapTool.UI
         private readonly string ProfileDirectory = AppDomain.CurrentDomain.BaseDirectory + "Profiles";
 
         private int HoverIndex = -1;
-        private List<ListBoxProfile> Profiles = new List<ListBoxProfile>();
+        private readonly List<ListBoxProfile> Profiles = new List<ListBoxProfile>();
         private ListBoxProfile SelectedProfile = null;
 
         private bool EnableWriteDebugLog = false;
@@ -41,9 +41,11 @@ namespace MapTool.UI
             Version v = Assembly.GetExecutingAssembly().GetName().Version;
             Text += " v." + v.ToString();
             if (Profiles.Count > 0 && listProfiles.SelectedIndex != -1) buttonEditProfile.Enabled = true;
-            string ext1 = "", ext2 = "", delim = "", delim2 = "";
+            string ext1 = "", ext2 = "";
             for (int i = 0; i < ValidMapExts.Count; i++)
             {
+                string delim;
+                string delim2;
                 if (i == 0) { delim = ""; delim2 = ""; }
                 else { delim = ","; delim2 = ";"; }
                 ext1 += delim + "*" + ValidMapExts[i];

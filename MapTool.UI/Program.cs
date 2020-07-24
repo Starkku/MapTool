@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2017 by Starkku
+ * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of

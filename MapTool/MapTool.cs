@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2017 by Starkku
+ * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,110 +11,126 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using CNCMaps.FileFormats.Encodings;
-using CNCMaps.FileFormats.VirtualFileSystem;
-using StarkkuUtils.FileTypes;
-using StarkkuUtils.Utilities;
 using System.Text.RegularExpressions;
 using System.Globalization;
+using MapTool.DataStructures;
+using StarkkuUtils.FileTypes;
+using StarkkuUtils.Utilities;
 using StarkkuUtils.ExtensionMethods;
 
 namespace MapTool
 {
     /// <summary>
-    /// Map file modifier tool.
+    /// Map tile data sort mode.
     /// </summary>
-    class MapTool
+    public enum IsoMapPack5SortMode { NotDefined, XLevelTileIndex, XTileIndexLevel, TileIndexXLevel, LevelXTileIndex, X, Level, TileIndex, SubTileIndex, IceGrowth, Y }
+
+    /// <summary>
+    /// Map file modifier tool class.
+    /// </summary>
+    public class MapTool
     {
+        #region public_properties
 
         /// <summary>
         /// Has tool been initialized or not.
         /// </summary>
-        public bool Initialized { get; set; }
+        public bool Initialized { get; private set; }
 
         /// <summary>
         /// Has map file been altered or not.
         /// </summary>
-        public bool MapAltered { get; set; }
+        public bool MapAltered { get; private set; }
 
         /// <summary>
         /// Map input filename.
         /// </summary>
-        private readonly string filenameInput;
+        public string FilenameInput { get; private set; }
+
         /// <summary>
         /// Map output filename.
         /// </summary>
-        private readonly string filenameOutput;
+        public string FilenameOutput { get; private set; }
+
+        #endregion
+
+        #region private_fields
 
         /// <summary>
         /// Map file.
         /// </summary>
         private readonly INIFile mapINI;
+
         /// <summary>
         /// Map theater.
         /// </summary>
         private readonly string mapTheater = null;
-        /// <summary>
-        /// Map local width.
-        /// </summary>
-        private int mapLocalWidth;
-        /// <summary>
-        /// Map local height.
-        /// </summary>
-        private int mapLocalHeight;
+
         /// <summary>
         /// Map full width.
         /// </summary>
         private readonly int mapWidth;
+
         /// <summary>
         /// Map full height.
         /// </summary>
         private readonly int mapHeight;
+
         /// <summary>
         /// Map tile data.
         /// </summary>
-        private List<MapTileContainer> isoMapPack5 = new List<MapTileContainer>();
+        private List<MapTile> isoMapPack5 = new List<MapTile>();
+
         /// <summary>
         /// Map overlay ID data.
         /// </summary>
         private byte[] overlayPack = null;
+
         /// <summary>
         /// Map overlay frame data.
         /// </summary>
         private byte[] overlayDataPack = null;
+
         /// <summary>
         /// Look-up table for map coordinate (X,Y) validity.
         /// </summary>
-        private bool[,] CoordinateValidityLUT;
+        private bool[,] coordinateValidityLUT;
 
         /// <summary>
         /// Conversion profile INI file.
         /// </summary>
         private readonly INIFile conversionProfileINI;
+
         /// <summary>
         /// Conversion profile applicable theaters.
         /// </summary>
         private readonly List<string> applicableTheaters = new List<string>();
+
         /// <summary>
         /// Conversion profile theater-specific global tile offsets.
         /// </summary>
         private readonly Dictionary<string, Tuple<int, int>> theaterTileOffsets = new Dictionary<string, Tuple<int, int>>();
+
         /// <summary>
         /// Conversion profile new theater.
         /// </summary>
         private readonly string newTheater = null;
+
         /// <summary>
         /// Conversion profile tile rules.
         /// </summary>
         private readonly List<TileConversionRule> tileRules = new List<TileConversionRule>();
+
         /// <summary>
         /// Conversion profile overlay rules.
         /// </summary>
         private readonly List<OverlayConversionRule> overlayRules = new List<OverlayConversionRule>();
+
         /// <summary>
         /// Conversion profile object rules.
         /// </summary>
-        private readonly List<StringIDConversionRule> objectRules = new List<StringIDConversionRule>();
+        private readonly List<StringConversionRule> objectRules = new List<StringConversionRule>();
+
         /// <summary>
         /// // Conversion profile section rules.
         /// </summary>
@@ -124,22 +140,27 @@ namespace MapTool
         /// Optimize output map file or not.
         /// </summary>
         private readonly bool useMapOptimize = false;
+
         /// <summary>
         /// Compress output map file or not.
         /// </summary>
         private readonly bool useMapCompress = false;
+
         /// <summary>
         /// Delete objects outside visible map bounds or not.
         /// </summary>
         private readonly bool deleteObjectsOutsideMapBounds = false;
+
         /// <summary>
         /// Remove clear tiles at level 0 from map tile data (they will be filled in by the game) or not.
         /// </summary>
         private readonly bool removeLevel0ClearTiles = false;
+
         /// <summary>
         /// Fix tunnel data or not.
         /// </summary>
         private readonly bool fixTunnels = false;
+
         /// <summary>
         /// Map tile data sort mode.
         /// </summary>
@@ -160,6 +181,8 @@ namespace MapTool
         /// </summary>
         private readonly Random random = new Random();
 
+        #endregion
+
         /// <summary>
         /// Initializes a new instance of MapTool.
         /// </summary>
@@ -171,28 +194,24 @@ namespace MapTool
         {
             Initialized = false;
             MapAltered = false;
-            filenameInput = inputFile;
-            filenameOutput = outputFile;
+            FilenameInput = inputFile;
+            FilenameOutput = outputFile;
 
-            if (listTheaterData && !string.IsNullOrEmpty(filenameInput))
+            if (listTheaterData && !string.IsNullOrEmpty(FilenameInput))
             {
-                theaterConfigINI = new INIFile(filenameInput);
+                theaterConfigINI = new INIFile(FilenameInput);
             }
 
-            else if (!string.IsNullOrEmpty(filenameInput) && !string.IsNullOrEmpty(filenameOutput))
+            else if (!string.IsNullOrEmpty(FilenameInput) && !string.IsNullOrEmpty(FilenameOutput))
             {
 
                 Logger.Info("Reading map file '" + inputFile + "'.");
                 mapINI = new INIFile(inputFile);
+
                 string[] size = mapINI.GetKey("Map", "Size", "").Split(',');
-                mapWidth = int.Parse(size[2]);
-                mapHeight = int.Parse(size[3]);
-                if (!ParseMapPack())
-                {
-                    Logger.Error("Could not parse map tile data. Aborting.");
-                    Initialized = false;
-                    return;
-                }
+                mapWidth = Conversion.GetIntFromString(size[2], -1);
+                mapHeight = Conversion.GetIntFromString(size[3], -1);
+
                 mapTheater = mapINI.GetKey("Map", "Theater", null);
                 if (mapTheater != null)
                     mapTheater = mapTheater.ToUpper();
@@ -202,7 +221,7 @@ namespace MapTool
                 string[] sections = conversionProfileINI.GetSections();
                 if (sections == null || sections.Length < 1)
                 {
-                    Logger.Error("Conversion profile file is empty. Aborting.");
+                    Logger.Error("Conversion profile file is empty.");
                     Initialized = false;
                     return;
                 }
@@ -295,7 +314,7 @@ namespace MapTool
                 if (!allowSaving && tilerules == null && overlayrules == null && objectrules == null && sectionrules == null &&
                     string.IsNullOrEmpty(newTheater))
                 {
-                    Logger.Error("No conversion rules to apply in the conversion profile file. Aborting.");
+                    Logger.Error("No conversion rules to apply in the conversion profile file.");
                     Initialized = false;
                     return;
                 }
@@ -316,10 +335,15 @@ namespace MapTool
         {
             if (deleteObjectsOutsideMapBounds)
             {
-                Logger.Info("DeleteObjectsOutsideMapBounds set: Objects & overlays outside map bounds will be deleted.");
-                CalculateCoordinateValidity();
-                DeleteObjectsOutsideBounds();
-                DeleteOverlaysOutsideBounds();
+                if (mapWidth > 0 && mapHeight > 0)
+                {
+                    Logger.Info("DeleteObjectsOutsideMapBounds set: Objects & overlays outside map bounds will be deleted.");
+                    CalculateCoordinateValidity();
+                    DeleteObjectsOutsideBounds();
+                    DeleteOverlaysOutsideBounds();
+                }
+                else
+                    Logger.Warn("DeleteObjectsOutsideMapBounds set but because map has invalid Size value set, no objects or overlays will be deleted.");
             }
             if (useMapOptimize)
             {
@@ -339,7 +363,7 @@ namespace MapTool
 
             string error;
             if (MapAltered || useMapCompress)
-                error = mapINI.Save(filenameOutput, !useMapCompress, !useMapCompress);
+                error = mapINI.Save(FilenameOutput, !useMapCompress, !useMapCompress);
             else
             {
                 Logger.Info("Skipping saving map file as no changes have been made to it.");
@@ -347,10 +371,10 @@ namespace MapTool
             }
 
             if (string.IsNullOrEmpty(error))
-                Logger.Info("Map file successfully saved to '" + filenameOutput + "'.");
+                Logger.Info("Map file successfully saved to '" + FilenameOutput + "'.");
             else
             {
-                Logger.Error("Error encountered saving map file to '" + filenameOutput + "'.");
+                Logger.Error("Error encountered saving map file to '" + FilenameOutput + "'.");
                 Logger.Error("Message: " + error);
             }
         }
@@ -381,66 +405,57 @@ namespace MapTool
             return true;
         }
 
+        #region map_pack_handling
+
         /// <summary>
         /// Parses IsoMapPack5 section of the map file.
         /// </summary>
-        /// <returns>True if success, otherwise false.</returns>
-        private bool ParseMapPack()
+        /// <returns>Error message if something went wrong, otherwise null.</returns>
+        private string ParseMapPack()
         {
-            Logger.Info("Parsing IsoMapPack5.");
-
-            string[] tmp = mapINI.GetValues("IsoMapPack5");
-
-            if (tmp == null || tmp.Length < 1)
-                return false;
-
-            string data = string.Join("", tmp);
-            int cells;
+            int cellCount;
             byte[] isoMapPack;
-            try
+
+            if (mapHeight < 1 || mapWidth < 1)
+                return ("Map Size is invalid.");
+
+            cellCount = (mapWidth * 2 - 1) * mapHeight;
+            int lzoPackSize = cellCount * 11 + 4;
+            isoMapPack = new byte[lzoPackSize];
+
+            // Fill up and filter later
+            int j = 0;
+            for (int i = 0; i < cellCount; i++)
             {
-                string size = mapINI.GetKey("Map", "Size", "");
-                string[] sizeValues = size.Split(',');
-                mapLocalWidth = Convert.ToInt16(sizeValues[2]);
-                mapLocalHeight = Convert.ToInt16(sizeValues[3]);
-                byte[] lzoData = Convert.FromBase64String(data);
-                byte[] test = lzoData;
-                cells = (mapLocalWidth * 2 - 1) * mapLocalHeight;
-                int lzoPackSize = cells * 11 + 4;
-                isoMapPack = new byte[lzoPackSize];
-                // Fill up and filter later
-                int j = 0;
-                for (int i = 0; i < cells; i++)
-                {
-                    isoMapPack[j] = 0x88;
-                    isoMapPack[j + 1] = 0x40;
-                    isoMapPack[j + 2] = 0x88;
-                    isoMapPack[j + 3] = 0x40;
-                    j += 11;
-                }
-                uint totalDecompressSize = Format5.DecodeInto(lzoData, isoMapPack);
+                isoMapPack[j] = 0x88;
+                isoMapPack[j + 1] = 0x40;
+                isoMapPack[j + 2] = 0x88;
+                isoMapPack[j + 3] = 0x40;
+                j += 11;
             }
-            catch (Exception)
+
+            string errorMessage = ParseEncodedMapSectionData("IsoMapPack5", ref isoMapPack);
+            if (errorMessage != null)
+                return errorMessage;
+
+            int bytesRead = 0;
+            for (int i = 0; i < cellCount; i++)
             {
-                return false;
-            }
-            MemoryFile mf = new MemoryFile(isoMapPack);
-            for (int i = 0; i < cells; i++)
-            {
-                ushort x = mf.ReadUInt16();
-                ushort y = mf.ReadUInt16();
-                int tileNum = mf.ReadInt32();
-                byte subTile = mf.ReadByte();
-                byte level = mf.ReadByte();
-                byte iceGrowth = mf.ReadByte();
-                //int dx = x - y + mapWidth - 1;
-                //int dy = x + y - mapWidth - 1;
+                ushort x = BitConverter.ToUInt16(isoMapPack, bytesRead);
+                bytesRead += 2;
+                ushort y = BitConverter.ToUInt16(isoMapPack, bytesRead);
+                bytesRead += 2;
+                int tileNum = BitConverter.ToInt32(isoMapPack, bytesRead);
+                bytesRead += 4;
+                byte subTile = isoMapPack[bytesRead++];
+                byte level = isoMapPack[bytesRead++];
+                byte iceGrowth = isoMapPack[bytesRead++];
                 if (x > 0 && y > 0 && x <= 16384 && y <= 16384)
                 {
-                    isoMapPack5.Add(new MapTileContainer((short)x, (short)y, tileNum, subTile, level, iceGrowth));
+                    isoMapPack5.Add(new MapTile((short)x, (short)y, tileNum, subTile, level, iceGrowth));
                 }
             }
-            return true;
+            return null;
         }
 
         /// <summary>
@@ -454,7 +469,7 @@ namespace MapTool
             byte[] isoMapPack = new byte[isoMapPack5.Count * 11 + 4];
             int i = 0;
 
-            foreach (MapTileContainer t in isoMapPack5)
+            foreach (MapTile t in isoMapPack5)
             {
                 byte[] x = BitConverter.GetBytes(t.X);
                 byte[] y = BitConverter.GetBytes(t.Y);
@@ -473,51 +488,77 @@ namespace MapTool
                 i += 11;
             }
 
-            byte[] lzo = Format5.Encode(isoMapPack, 5);
+            byte[] lzo = MapPackHelper.Compress(isoMapPack);
             string data = Convert.ToBase64String(lzo, Base64FormattingOptions.None);
-            OverrideBase64MapSection("IsoMapPack5", data);
+            ReplacePackedSectionData("IsoMapPack5", data);
         }
 
         /// <summary>
-        /// Parses Overlay(Data)Pack section(s) of the map file.
+        /// Parses Overlay(Data)Pack sections of the map file.
         /// </summary>
-        private void ParseOverlayPack()
+        private void ParseOverlayPacks()
         {
-            Logger.Info("Parsing OverlayPack.");
-            string[] values = mapINI.GetValues("OverlayPack");
-            if (values == null || values.Length < 1) return;
-            byte[] format80Data = Convert.FromBase64String(string.Join("", values));
-            var overlaypack = new byte[1 << 18];
-            Format5.DecodeInto(format80Data, overlaypack, 80);
+            overlayPack = new byte[1 << 18];
+            string errorMessage = ParseEncodedMapSectionData("OverlayPack", ref overlayPack, true);
+            if (errorMessage != null)
+                Logger.Warn(errorMessage);
 
-            Logger.Info("Parsing OverlayDataPack.");
-            values = mapINI.GetValues("OverlayDataPack");
-            if (values == null || values.Length < 1) return;
-            format80Data = Convert.FromBase64String(string.Join("", values));
-            var overlaydatapack = new byte[1 << 18];
-            Format5.DecodeInto(format80Data, overlaydatapack, 80);
-
-            overlayPack = overlaypack;
-            overlayDataPack = overlaydatapack;
+            overlayDataPack = new byte[1 << 18];
+            errorMessage = ParseEncodedMapSectionData("OverlayDataPack", ref overlayDataPack, true);
+            if (errorMessage != null)
+                Logger.Warn(errorMessage);
         }
 
+
         /// <summary>
-        /// Saves Overlay(Data)Pack section(s) of the map file.
+        /// Saves Overlay(Data)Pack sections of the map file.
         /// </summary>
-        private void SaveOverlayPack()
+        private void SaveOverlayPacks()
         {
-            string base64_overlayPack = Convert.ToBase64String(Format5.Encode(overlayPack, 80), Base64FormattingOptions.None);
-            string base64_overlayDataPack = Convert.ToBase64String(Format5.Encode(overlayDataPack, 80), Base64FormattingOptions.None);
-            OverrideBase64MapSection("OverlayPack", base64_overlayPack);
-            OverrideBase64MapSection("OverlayDataPack", base64_overlayDataPack);
+            string base64_overlayPack = Convert.ToBase64String(MapPackHelper.Compress(overlayPack, true), Base64FormattingOptions.None);
+            string base64_overlayDataPack = Convert.ToBase64String(MapPackHelper.Compress(overlayDataPack, true), Base64FormattingOptions.None);
+            ReplacePackedSectionData("OverlayPack", base64_overlayPack);
+            ReplacePackedSectionData("OverlayDataPack", base64_overlayDataPack);
         }
 
         /// <summary>
-        /// Replaces contents of a base64-encoded section of map file.
+        /// Parses and decompresses Base64-encoded and compressed data from specified section of map file.
         /// </summary>
-        /// <param name="sectionName">Name of the section to replace.</param>
+        /// <param name="sectionName">Name of the section.</param>
+        /// <param name="outputData">Array to put the decompressed data to.</param>
+        /// <param name="useLCW">If set to true, treat data as LCW-compressed instead of LZO.</param>
+        /// <returns>Error message if something went wrong, otherwise null.</returns>
+        private string ParseEncodedMapSectionData(string sectionName, ref byte[] outputData, bool useLCW = false)
+        {
+            Logger.Info("Parsing " + sectionName + ".");
+            string[] values = mapINI.GetValues(sectionName);
+            if (values == null || values.Length < 1)
+                return sectionName + " data is empty.";
+            byte[] compressedData;
+            try
+            {
+                compressedData = Convert.FromBase64String(string.Join("", values));
+            }
+            catch (Exception)
+            {
+                return sectionName + " is malformed.";
+            }
+            if (MapPackHelper.Decompress(compressedData, outputData, out _, useLCW))
+            {
+                return null;
+            }
+            else
+            {
+                return sectionName + " data is invalid or corrupted.";
+            }
+        }
+
+        /// <summary>
+        /// Replaces contents of a Base64-encoded section of map file.
+        /// </summary>
+        /// <param name="sectionName">Name of the section.</param>
         /// <param name="data">Contents to replace the existing contents with.</param>
-        private void OverrideBase64MapSection(string sectionName, string data)
+        private void ReplacePackedSectionData(string sectionName, string data)
         {
             int lx = 70;
             List<string> lines = new List<string>();
@@ -527,6 +568,10 @@ namespace MapTool
             }
             mapINI.ReplaceSectionKeysAndValues(sectionName, lines);
         }
+
+        #endregion
+
+        #region conversion_rule_parsing
 
         /// <summary>
         /// Parses conversion profile information for tile conversion rules.
@@ -683,7 +728,7 @@ namespace MapTool
         /// <summary>
         /// Parses conversion profile information for string ID-type rules.
         /// </summary>
-        private void ParseConversionRules(string[] ruleStrings, List<StringIDConversionRule> currentRules)
+        private void ParseConversionRules(string[] ruleStrings, List<StringConversionRule> currentRules)
         {
             if (ruleStrings == null || ruleStrings.Length < 1 || currentRules == null)
                 return;
@@ -694,9 +739,9 @@ namespace MapTool
             {
                 string[] values = ruleString.Split('|');
                 if (values.Length == 1)
-                    currentRules.Add(new StringIDConversionRule(values[0], null));
+                    currentRules.Add(new StringConversionRule(values[0], null));
                 else if (values.Length >= 2)
-                    currentRules.Add(new StringIDConversionRule(values[0], values[1]));
+                    currentRules.Add(new StringConversionRule(values[0], values[1]));
             }
         }
 
@@ -837,6 +882,10 @@ namespace MapTool
             return ruleStringFiltered;
         }
 
+        #endregion
+
+        #region conversion
+
         /// <summary>
         /// Changes theater declaration of current map based on conversion profile.
         /// </summary>
@@ -865,7 +914,20 @@ namespace MapTool
         /// </summary>
         public void ConvertTileData()
         {
-            if (!Initialized || isoMapPack5.Count < 1)
+            if (!Initialized)
+                return;
+
+            if (tileRules.Count > 0 || removeLevel0ClearTiles || isoMapPack5SortBy != IsoMapPack5SortMode.NotDefined)
+            {
+                string errorMessage = ParseMapPack();
+                if (errorMessage != null)
+                {
+                    Logger.Error("Error encountered parsing tile data: Message: " + errorMessage);
+                    return;
+                }
+            }
+
+            if (isoMapPack5.Count < 1)
                 return;
 
             else if (!IsCurrentTheaterAllowed())
@@ -895,7 +957,6 @@ namespace MapTool
 
             Logger.Info("Attempting to apply TileRules on map tile data.");
 
-            Random random = new Random();
             int originalOffset = 0, newOffset = 0;
             bool tileDataAltered = false;
 
@@ -909,7 +970,7 @@ namespace MapTool
                     Logger.Info("Global tile rule offsets for theater " + mapTheater.ToUpper() + ": " + originalOffset + " (original), " + newOffset + " (new)");
             }
 
-            foreach (MapTileContainer tile in isoMapPack5)
+            foreach (MapTile tile in isoMapPack5)
             {
                 if (tile.TileIndex < 0 || tile.TileIndex == 65535)
                     tile.TileIndex = 0;
@@ -1000,9 +1061,9 @@ namespace MapTool
 
             Logger.Info("RemoveLevel0ClearTiles set: All tile data with tile index & level set to 0 is removed.");
 
-            List<MapTileContainer> removeTiles = new List<MapTileContainer>();
+            List<MapTile> removeTiles = new List<MapTile>();
 
-            foreach (MapTileContainer tile in isoMapPack5)
+            foreach (MapTile tile in isoMapPack5)
             {
                 if (tile.TileIndex < 1 && tile.Level < 1 && tile.SubTileIndex < 1 && tile.IceGrowth < 1)
                     removeTiles.Add(tile);
@@ -1076,11 +1137,12 @@ namespace MapTool
                 return;
             }
 
-            ParseOverlayPack();
+            ParseOverlayPacks();
+
             bool overlayDataAltered = ApplyOverlayConversionRules();
 
             if (overlayDataAltered)
-                SaveOverlayPack();
+                SaveOverlayPacks();
 
             MapAltered |= overlayDataAltered;
         }
@@ -1212,7 +1274,7 @@ namespace MapTool
             if (kvps == null) return;
             foreach (KeyValuePair<string, string> kvp in kvps)
             {
-                foreach (StringIDConversionRule rule in objectRules)
+                foreach (StringConversionRule rule in objectRules)
                 {
                     if (rule == null || rule.Original == null) continue;
                     if (CheckIfObjectIDMatches(kvp.Value, rule.Original))
@@ -1300,7 +1362,9 @@ namespace MapTool
         private void DeleteOverlaysOutsideBounds()
         {
             if (overlayPack == null || overlayDataPack == null)
-                ParseOverlayPack();
+            {
+                ParseOverlayPacks();
+            }
 
             if (overlayPack == null || overlayDataPack == null)
                 return;
@@ -1324,7 +1388,7 @@ namespace MapTool
             }
 
             if (overlayDataAltered)
-                SaveOverlayPack();
+                SaveOverlayPacks();
 
             MapAltered |= overlayDataAltered;
         }
@@ -1447,6 +1511,10 @@ namespace MapTool
             }
         }
 
+        #endregion
+
+        #region helpers
+
         /// <summary>
         /// Checks if map object declaration matches with specific object ID.
         /// </summary>
@@ -1470,11 +1538,11 @@ namespace MapTool
         /// <returns>True if location exists, false if not.</returns>
         private bool CoordinateExistsOnMap(int x, int y)
         {
-            if (!Initialized || CoordinateValidityLUT == null ||
-                CoordinateValidityLUT.GetLength(0) <= x || CoordinateValidityLUT.GetLength(1) <= y)
+            if (!Initialized || coordinateValidityLUT == null ||
+                coordinateValidityLUT.GetLength(0) <= x || coordinateValidityLUT.GetLength(1) <= y)
                 return false;
 
-            return CoordinateValidityLUT[x, y];
+            return coordinateValidityLUT[x, y];
         }
 
         /// <summary>
@@ -1485,7 +1553,7 @@ namespace MapTool
             Logger.Debug("Calculating map coordinate look-up table.");
 
             int size = Math.Max(mapWidth, mapHeight) * 2 + 1;
-            CoordinateValidityLUT = new bool[size, size];
+            coordinateValidityLUT = new bool[size, size];
 
             int yOffset = 0;
             for (int col = 1; col <= mapWidth; col++)
@@ -1495,48 +1563,12 @@ namespace MapTool
                 {
                     int x = col + row;
                     int y = startY + row;
-                    CoordinateValidityLUT[x, y] = true;
+                    coordinateValidityLUT[x, y] = true;
                     if (col < mapWidth)
-                        CoordinateValidityLUT[x + 1, y] = true;
+                        coordinateValidityLUT[x + 1, y] = true;
                 }
                 yOffset += 1;
             }
-        }
-
-        /// <summary>
-        /// Lists theater config file data to a text file.
-        /// </summary>
-        public void ListTileSetData()
-        {
-            if (!Initialized || theaterConfigINI == null) return;
-
-            TilesetCollection mtiles = TilesetCollection.ParseFromINIFile(theaterConfigINI);
-
-            if (mtiles == null || mtiles.Count < 1)
-            {
-                Logger.Error("Could not parse tileset data from theater configuration file '" +
-                    theaterConfigINI.Filename + "'."); return;
-            };
-
-            Logger.Info("Attempting to list tileset data for a theater based on file: '" + theaterConfigINI.Filename + "'.");
-            List<string> lines = new List<string>();
-            int tilecounter = 0;
-            lines.Add("Theater tileset data gathered from file '" + theaterConfigINI.Filename + "'.");
-            lines.Add("");
-            lines.Add("");
-            foreach (Tileset ts in mtiles)
-            {
-                if (ts.TilesInSet < 1)
-                {
-                    Logger.Debug("ListTileSetData: " + ts.SetID + " (" + ts.SetName + ")" + " skipped due to tile count of 0.");
-                    continue;
-                }
-                lines.AddRange(ts.GetPrintableData(tilecounter));
-                lines.Add("");
-                tilecounter += ts.TilesInSet;
-                Logger.Debug("ListTileSetData: " + ts.SetID + " (" + ts.SetName + ")" + " added to the list.");
-            }
-            File.WriteAllLines(filenameOutput, lines.ToArray());
         }
 
         /// <summary>
@@ -1548,6 +1580,7 @@ namespace MapTool
         {
             if (keyValuePairs == null)
                 return null;
+
             string[] result = new string[keyValuePairs.Length];
             for (int i = 0; i < keyValuePairs.Length; i++)
             {
@@ -1556,5 +1589,78 @@ namespace MapTool
             return result;
         }
 
+        #endregion
+
+        /// <summary>
+        /// Lists theater config file data to a text file.
+        /// </summary>
+        public void ListTileSetData()
+        {
+            if (!Initialized || theaterConfigINI == null)
+                return;
+
+            List<Tileset> tilesets = ParseTilesetData();
+
+            if (tilesets == null || tilesets.Count < 1)
+            {
+                Logger.Error("Could not parse tileset data from theater configuration file '" +
+                    theaterConfigINI.Filename + "'."); return;
+            };
+
+            Logger.Info("Attempting to list tileset data for a theater based on file: '" + theaterConfigINI.Filename + "'.");
+            List<string> lines = new List<string>();
+            int tilecounter = 0;
+            lines.Add("Theater tileset data gathered from file '" + theaterConfigINI.Filename + "'.");
+            lines.Add("");
+            lines.Add("");
+            foreach (Tileset tileset in tilesets)
+            {
+                if (tileset.TilesInSet < 1)
+                {
+                    Logger.Debug("ListTileSetData: " + tileset.SetID + " (" + tileset.SetName + ")" + " skipped due to tile count of 0.");
+                    continue;
+                }
+                lines.AddRange(tileset.GetPrintableData(tilecounter));
+                lines.Add("");
+                tilecounter += tileset.TilesInSet;
+                Logger.Debug("ListTileSetData: " + tileset.SetID + " (" + tileset.SetName + ")" + " added to the list.");
+            }
+            File.WriteAllLines(FilenameOutput, lines.ToArray());
+        }
+
+        /// <summary>
+        /// Parse tileset data from a theater configuration INI file.
+        /// </summary>
+        /// <returns>List of tilesets.</returns>
+        private List<Tileset> ParseTilesetData()
+        {
+            List<Tileset> tilesets = new List<Tileset>();
+
+            if (!Initialized || theaterConfigINI == null)
+                return tilesets;
+
+            string[] sections = theaterConfigINI.GetSections();
+            foreach (string section in sections)
+            {
+                if (!section.StartsWith("TileSet"))
+                    continue;
+
+                Tileset tileset = new Tileset
+                {
+                    SetID = section,
+                    SetNumber = Conversion.GetIntFromString(section.Substring(7, 4), -1),
+                    SetName = theaterConfigINI.GetKey(section, "SetName", "N/A"),
+                    FileName = theaterConfigINI.GetKey(section, "FileName", "N/A").ToLower(),
+                    TilesInSet = Conversion.GetIntFromString(theaterConfigINI.GetKey(section, "TilesInSet", "0"), 0)
+                };
+
+                if (tileset.SetNumber == -1)
+                    continue;
+
+                tilesets.Add(tileset);
+            }
+
+            return tilesets;
+        }
     }
 }

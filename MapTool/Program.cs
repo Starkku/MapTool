@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2017 by Starkku
+ * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,10 +9,10 @@
 
 using System;
 using System.IO;
-using NDesk.Options;
-using MapTool.Utility;
 using System.Reflection;
+using MapTool.Utility;
 using StarkkuUtils.Utilities;
+using NDesk.Options;
 
 namespace MapTool
 {
@@ -101,7 +101,7 @@ namespace MapTool
                 Logger.Info("MapTool initialized.");
             else
             {
-                Logger.Error("MapTool could not be initialized. Aborting.");
+                Logger.Error("MapTool could not be initialized.");
                 return;
             }
 

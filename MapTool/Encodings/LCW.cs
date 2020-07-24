@@ -12,7 +12,7 @@
 using System;
 using System.IO;
 
-namespace CNCMaps.FileFormats.Encodings
+namespace MapTool.Encodings
 {
     class FastByteReader
     {
@@ -42,7 +42,7 @@ namespace CNCMaps.FileFormats.Encodings
         public int Remaining() { return src.Length - offset; }
     }
 
-    public static class Format80
+    public static class LCW
     {
         static void ReplicatePrevious(byte[] dest, int destIndex, int srcIndex, int count)
         {
