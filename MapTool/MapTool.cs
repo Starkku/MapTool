@@ -1182,11 +1182,17 @@ namespace MapTool
                         rule.CoordinateFilterY > -1 && rule.CoordinateFilterY != y)
                         continue;
 
-                    overlayDataChanged |= ChangeOverlayData(overlayPack, i, x, y, rule.OriginalStartIndex, rule.OriginalEndIndex,
+                    bool overlayPackChanged = ChangeOverlayData(overlayPack, i, x, y, rule.OriginalStartIndex, rule.OriginalEndIndex,
                         rule.NewStartIndex, rule.NewEndIndex, rule.IsRandomizer, false);
 
-                    overlayDataChanged |= ChangeOverlayData(overlayDataPack, i, x, y, rule.OriginalStartFrameIndex, rule.OriginalEndFrameIndex,
+                    bool overlayDataPackChanged = ChangeOverlayData(overlayDataPack, i, x, y, rule.OriginalStartFrameIndex, rule.OriginalEndFrameIndex,
                         rule.NewStartFrameIndex, rule.NewEndFrameIndex, rule.IsFrameRandomizer, true);
+
+                    if (overlayPackChanged || overlayDataPackChanged)
+                    {
+                        overlayDataChanged = true;
+                        break;
+                    }
                 }
             }
             return overlayDataChanged;
