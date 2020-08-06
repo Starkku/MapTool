@@ -57,9 +57,18 @@ namespace MapTool.Utility
         }
 
         /// <summary>
-        /// If set, enable debug logging.
+        /// If set, writes a log file.
         /// </summary>
-        public bool DebugLogging
+        public bool WriteLogFile
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// If set, shows debug-level logging in console.
+        /// </summary>
+        public bool ShowDebugLogging
         {
             get;
             set;

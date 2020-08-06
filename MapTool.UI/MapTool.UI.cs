@@ -29,7 +29,8 @@ namespace MapTool.UI
         private readonly List<ListBoxProfile> Profiles = new List<ListBoxProfile>();
         private ListBoxProfile SelectedProfile = null;
 
-        private bool EnableWriteDebugLog = false;
+        private bool WriteLogFile = false;
+        private bool ShowDebugLogging = false;
 
         public MapToolUI(string[] args)
         {
@@ -52,10 +53,10 @@ namespace MapTool.UI
                 ext2 += delim2 + "*" + ValidMapExts[i];
             }
             openFileDialog.Filter = "Map files (" + ext1 + ")|" + ext2;
-            if (EnableWriteDebugLog)
+            if (WriteLogFile)
             {
                 string logfile = AppDomain.CurrentDomain.BaseDirectory + Path.ChangeExtension(AppDomain.CurrentDomain.FriendlyName, ".log");
-                Logger.Initialize(logfile, true, false);
+                Logger.Initialize(logfile, true, ShowDebugLogging);
             }
         }
 
@@ -66,7 +67,14 @@ namespace MapTool.UI
                 switch (arg.ToLower())
                 {
                     case "-log":
-                        EnableWriteDebugLog = true;
+                    case "--log":
+                    case "-g":
+                        WriteLogFile = true;
+                        continue;
+                    case "-debug":
+                    case "--debug":
+                    case "-d":
+                        ShowDebugLogging = true;
                         continue;
                     default:
                         continue;
@@ -239,7 +247,8 @@ namespace MapTool.UI
             string outputfilename = Path.GetDirectoryName(filename) + "\\" + Path.GetFileNameWithoutExtension(filename) + "_altered" + Path.GetExtension(filename);
             if (cbOverwrite.Checked) outputfilename = filename;
             string extra = "";
-            //if (EnableWriteDebugLog) extra += " -log";
+            if (WriteLogFile) 
+                extra += " -debug";
             string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + SelectedProfile.FileName + "\"" + extra;
 
             try
@@ -277,20 +286,26 @@ namespace MapTool.UI
             AppendToLog(e.Data);
         }
 
-        private delegate void LogDelegate(string s);
-        private void AppendToLog(string s)
+        private delegate void LogDelegate(string str);
+        private void AppendToLog(string str)
         {
-            if (s == null) return;
+            if (str == null) return;
             if (InvokeRequired)
             {
-                Invoke(new LogDelegate(AppendToLog), s);
+                Invoke(new LogDelegate(AppendToLog), str);
                 return;
             }
-            textBoxLogger.AppendText(s + "\r\n");
-            if (EnableWriteDebugLog)
+            bool skipTextBoxLogging = false;
+            if (!ShowDebugLogging && str.Contains("[Debug]") && str.Length >= 8)
             {
-                Logger.LogToFileOnly(s);
+                string strTrimTime = str.Substring(8);
+                if (strTrimTime.StartsWith("[Debug]"))
+                    skipTextBoxLogging = true;
             }
+            if (!skipTextBoxLogging)
+                textBoxLogger.AppendText(str + "\r\n");
+            if (WriteLogFile)
+                Logger.LogToFileOnly(str);
         }
 
         private delegate void ControlStateDelegate(bool enable);

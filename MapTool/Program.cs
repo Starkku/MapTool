@@ -25,12 +25,13 @@ namespace MapTool
         {
             options = new OptionSet
             {
-                { "h|help", "Show help", v => settings.ShowHelp = true},
+                { "h|?|help", "Show help", v => settings.ShowHelp = true},
                 { "i|infile=", "Input file.", v => settings.FileInput = v},
                 { "o|outfile=", "Output file.", v => settings.FileOutput = v},
                 { "l|list", "List theater data based on input theater config file.", v => settings.List = true},
                 { "p|profilefile=", "Conversion profile file. This also enables the conversion logic.", v => settings.FileConfig = v},
-                { "log|debug-logging", "If set, writes a log to a file in program directory.", v => settings.DebugLogging = true}
+                { "g|log", "If set, writes a log to a file in program directory.", v => settings.WriteLogFile = true},
+                { "d|debug", "If set, shows debug-level logging in console window.", v => settings.ShowDebugLogging = true}
             };
             try
             {
@@ -45,7 +46,7 @@ namespace MapTool
                 ShowHelp();
                 return;
             }
-            InitLogger(settings.DebugLogging);
+            InitLogger();
 
 #if !DEBUG
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
@@ -132,15 +133,14 @@ namespace MapTool
         /// <summary>
         /// Initializes the logger.
         /// </summary>
-        /// <param name="writeFile">Set to yes to write a log file.</param>
-        private static void InitLogger(bool writeFile = false)
+        private static void InitLogger()
         {
             string filename = AppDomain.CurrentDomain.BaseDirectory + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) + ".log";
-            bool enableDebugLogging = false;
+            bool enableDebugLogging = settings.ShowDebugLogging;
 #if DEBUG
             enableDebugLogging = true;
 #endif
-            Logger.Initialize(filename, writeFile, enableDebugLogging);
+            Logger.Initialize(filename, settings.WriteLogFile, enableDebugLogging);
         }
 
         /// <summary>
