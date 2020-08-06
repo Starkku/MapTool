@@ -1648,7 +1648,7 @@ namespace MapTool
             string[] sections = theaterConfigINI.GetSections();
             foreach (string section in sections)
             {
-                if (!section.StartsWith("TileSet"))
+                if (!Regex.IsMatch(section, "^TileSet\\d{4}$"))
                     continue;
 
                 Tileset tileset = new Tileset
