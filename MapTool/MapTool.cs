@@ -566,7 +566,7 @@ namespace MapTool
             {
                 lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
             }
-            mapINI.ReplaceSectionKeysAndValues(sectionName, lines);
+            mapINI.ReplaceSectionWithStrings(sectionName, lines);
         }
 
         #endregion
