@@ -129,7 +129,7 @@ namespace MapTool
         /// <summary>
         /// Conversion profile object rules.
         /// </summary>
-        private readonly List<StringConversionRule> objectRules = new List<StringConversionRule>();
+        private readonly List<ObjectConversionRule> objectRules = new List<ObjectConversionRule>();
 
         /// <summary>
         /// // Conversion profile section rules.
@@ -726,9 +726,9 @@ namespace MapTool
         }
 
         /// <summary>
-        /// Parses conversion profile information for string ID-type rules.
+        /// Parses conversion profile information for general object rules.
         /// </summary>
-        private void ParseConversionRules(string[] ruleStrings, List<StringConversionRule> currentRules)
+        private void ParseConversionRules(string[] ruleStrings, List<ObjectConversionRule> currentRules)
         {
             if (ruleStrings == null || ruleStrings.Length < 1 || currentRules == null)
                 return;
@@ -737,11 +737,13 @@ namespace MapTool
 
             foreach (string ruleString in ruleStrings)
             {
-                string[] values = ruleString.Split('|');
+                string ruleStringFiltered = GetCoordinateFilters(ruleString, out int coordFilterX, out int coordFilterY);
+
+                string[] values = ruleStringFiltered.Split('|');
                 if (values.Length == 1)
-                    currentRules.Add(new StringConversionRule(values[0], null));
+                    currentRules.Add(new ObjectConversionRule(values[0], null, coordFilterX, coordFilterY));
                 else if (values.Length >= 2)
-                    currentRules.Add(new StringConversionRule(values[0], values[1]));
+                    currentRules.Add(new ObjectConversionRule(values[0], values[1], coordFilterX, coordFilterY));
             }
         }
 
@@ -870,12 +872,12 @@ namespace MapTool
 
             if (ruleStringFiltered.StartsWith("(") && ruleStringFiltered.Contains(")"))
             {
-                string coordString = ruleStringFiltered.Substring(1, ruleStringFiltered.IndexOf(")") - 1).Replace("*", -1 + "");
+                string coordString = ruleStringFiltered.Substring(1, ruleStringFiltered.IndexOf(")") - 1);
                 string[] coords = coordString.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
                 if (coords.Length >= 2)
                 {
-                    coordFilterX = Conversion.GetIntFromString(coords[0], -1);
-                    coordFilterY = Conversion.GetIntFromString(coords[1], -1);
+                    coordFilterX = Conversion.GetIntFromString(coords[0].Replace("*", -1 + ""), -1);
+                    coordFilterY = Conversion.GetIntFromString(coords[1].Replace("*", -1 + ""), -1);
                 }
                 ruleStringFiltered = ruleStringFiltered.ReplaceFirst("(" + coordString + ")", "");
             }
@@ -1280,21 +1282,29 @@ namespace MapTool
             if (kvps == null) return;
             foreach (KeyValuePair<string, string> kvp in kvps)
             {
-                foreach (StringConversionRule rule in objectRules)
+                foreach (ObjectConversionRule rule in objectRules)
                 {
-                    if (rule == null || rule.Original == null) continue;
-                    if (CheckIfObjectIDMatches(kvp.Value, rule.Original))
+                    if (rule == null || rule.OriginalName == null)
+                        continue;
+
+                    GetObjectCoordinates(kvp, sectionName, out int x, out int y);
+
+                    if (rule.CoordinateFilterX > -1 && rule.CoordinateFilterX != x ||
+                        rule.CoordinateFilterY > -1 && rule.CoordinateFilterY != y)
+                        continue;
+
+                    if (CheckIfObjectIDMatches(kvp.Value, rule.OriginalName))
                     {
-                        if (rule.New == null)
+                        if (rule.NewName == null)
                         {
-                            Logger.Debug("ObjectRules: Removed " + sectionName + " object with ID '" + rule.Original + "' from the map file.");
+                            Logger.Debug("ObjectRules: Removed " + sectionName + " object with ID '" + rule.OriginalName + "' (X: " + x + ", Y: " + y + ") from the map file.");
                             mapINI.RemoveKey(sectionName, kvp.Key);
                             MapAltered = true;
                         }
                         else
                         {
-                            Logger.Debug("ObjectRules: Replaced " + sectionName + " object with ID '" + rule.Original + "' with object of ID '" + rule.New + "'.");
-                            mapINI.SetKey(sectionName, kvp.Key, kvp.Value.Replace(rule.Original, rule.New));
+                            Logger.Debug("ObjectRules: Replaced " + sectionName + " object with ID '" + rule.OriginalName + "' (X: " + x + ", Y: " + y + ") with object of ID '" + rule.NewName + "'.");
+                            mapINI.SetKey(sectionName, kvp.Key, kvp.Value.Replace(rule.OriginalName, rule.NewName));
                             MapAltered = true;
                         }
                     }
@@ -1529,11 +1539,44 @@ namespace MapTool
         /// <returns>True if a match, otherwise false.</returns>
         private bool CheckIfObjectIDMatches(string objectDeclaration, string objectID)
         {
-            if (objectDeclaration.Equals(objectID)) return true;
+            if (objectDeclaration.Equals(objectID))
+                return true;
             string[] sp = objectDeclaration.Split(',');
-            if (sp.Length < 2) return false;
-            if (sp[1].Equals(objectID)) return true;
+            if (sp.Length < 2)
+                return false;
+            if (sp[1].Equals(objectID))
+                return true;
             return false;
+        }
+
+        /// <summary>
+        /// Gets coordinates of a map object.
+        /// </summary>
+        /// <param name="kvp">Object declaration key & value.</param>
+        /// <param name="sectionName">Map object section name.</param>
+        /// <param name="x">Will be set to map tile x coordinate of the object.</param>
+        /// <param name="y">Will be set to map tile y coordinate of the object.</param>
+        private void GetObjectCoordinates(KeyValuePair<string, string> kvp, string sectionName, out int x, out int y)
+        {
+            x = -1;
+            y = -1;
+
+            if (sectionName.Equals("Terrain"))
+            {
+                int coord = Conversion.GetIntFromString(kvp.Key, -1);
+                if (coord < 0)
+                    return;
+                x = coord % 1000;
+                y = (coord - x) / 1000;
+            }
+            else
+            {
+                string[] sp = kvp.Value.Split(',');
+                if (sp.Length < 5)
+                    return;
+                x = Conversion.GetIntFromString(sp[3], -1);
+                y = Conversion.GetIntFromString(sp[4], -1);
+            }
         }
 
         /// <summary>

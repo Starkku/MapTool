@@ -223,29 +223,43 @@ namespace MapTool.DataStructures
     }
 
     /// <summary>
-    /// String based conversion rule.
+    /// General object conversion rule.
     /// </summary>
-    public class StringConversionRule
+    public class ObjectConversionRule
     {
         /// <summary>
-        /// Original string.
+        /// Original object name.
         /// </summary>
-        public string Original { get; private set; }
+        public string OriginalName { get; private set; }
 
         /// <summary>
-        /// New string.
+        /// New object name.
         /// </summary>
-        public string New { get; private set; }
+        public string NewName { get; private set; }
 
         /// <summary>
-        /// Creates new string based conversion rule.
+        /// Map tile coordinate filter for X coordinate.
         /// </summary>
-        /// <param name="originalString">Original string.</param>
-        /// <param name="newString">New string.<param>
-        public StringConversionRule(string originalString, string newString)
+        public int CoordinateFilterX { get; private set; } = -1;
+
+        /// <summary>
+        /// Map tile coordinate filter for Y coordinate.
+        /// </summary>
+        public int CoordinateFilterY { get; private set; } = -1;
+
+        /// <summary>
+        /// Creates new general object conversion rule.
+        /// </summary>
+        /// <param name="originalName">Original object name.</param>
+        /// <param name="newName">New object name.<param>
+        /// <param name="coordinateFilterX">Map tile coordinate filter for X coordinate.</param>
+        /// <param name="coordinateFilterY">Map tile coordinate filter for Y coordinate.</param>
+        public ObjectConversionRule(string originalName, string newName, int coordinateFilterX = -1, int coordinateFilterY = -1)
         {
-            Original = originalString;
-            New = newString;
+            OriginalName = originalName;
+            NewName = newName;
+            CoordinateFilterX = coordinateFilterX;
+            CoordinateFilterY = coordinateFilterY;
         }
     }
 
