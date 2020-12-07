@@ -430,7 +430,8 @@ namespace MapTool.Logic
                 else
                 {
                     Upgrades[i] = upgrades[i];
-                    UpgradeCount++;
+                    if (!upgrades[i].Equals("None", StringComparison.InvariantCulture))
+                        UpgradeCount++;
                 }
             }
         }
