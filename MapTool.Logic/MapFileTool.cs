@@ -850,7 +850,7 @@ namespace MapTool.Logic
                     if (tile.TileIndex >= ruleOriginalStartIndex && tile.TileIndex <= ruleOriginalEndIndex)
                     {
                         if (rule.OriginalSubStartIndex != -1 && rule.OriginalSubEndIndex != -1 &&
-                            tile.SubTileIndex < rule.OriginalSubStartIndex || tile.SubTileIndex > rule.OriginalSubEndIndex)
+                            (tile.SubTileIndex < rule.OriginalSubStartIndex || tile.SubTileIndex > rule.OriginalSubEndIndex))
                             continue;
 
                         if (rule.HeightOverride > -1)
