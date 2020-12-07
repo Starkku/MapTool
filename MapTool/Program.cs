@@ -2,7 +2,7 @@
  * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation, either version 3 of
+ * as published by the Free Software Foundation, either version 2 of
  * the License, or (at your option) any later version. For more
  * information, see COPYING.
  */
@@ -10,8 +10,8 @@
 using System;
 using System.IO;
 using System.Reflection;
-using MapTool.Utility;
-using StarkkuUtils.Utilities;
+using Starkku.Utilities;
+using MapTool.Logic;
 using NDesk.Options;
 
 namespace MapTool
@@ -41,7 +41,7 @@ namespace MapTool
             {
                 ConsoleColor defcolor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Encountered an error while parsing command-line parameters. Message: " + e.Message);
+                Console.WriteLine("Encountered an error while parsing command-line arguments. Message: " + e.Message);
                 Console.ForegroundColor = defcolor;
                 ShowHelp();
                 return;
@@ -60,7 +60,7 @@ namespace MapTool
             }
             if (string.IsNullOrEmpty(settings.FileConfig) && !settings.List)
             {
-                Logger.Error("Not enough parameters. Must provide either -l or -p.");
+                Logger.Error("Not enough arguments. Must provide either -l or -p.");
                 ShowHelp();
                 return;
             }
@@ -97,8 +97,9 @@ namespace MapTool
             else
                 Logger.Info("Output file path OK.");
 
-            MapTool map = new MapTool(settings.FileInput, settings.FileOutput, settings.FileConfig, settings.List);
-            if (map.Initialized)
+            MapFileTool mapTool = new MapFileTool(settings.FileInput, settings.FileOutput, settings.FileConfig, settings.List);
+
+            if (mapTool.Initialized)
                 Logger.Info("MapTool initialized.");
             else
             {
@@ -108,19 +109,19 @@ namespace MapTool
 
             if (settings.List)
             {
-                map.ListTileSetData();
+                mapTool.ListTileSetData();
                 return;
             }
             else
             {
-                map.ConvertTheaterData();
-                map.ConvertTileData();
-                map.ConvertOverlayData();
-                map.ConvertObjectData();
-                map.ConvertSectionData();
+                mapTool.ConvertTileData();
+                mapTool.ConvertOverlayData();
+                mapTool.ConvertObjectData();
+                mapTool.ConvertSectionData();
+                mapTool.ConvertTheaterData();
             }
             
-            map.Save();
+            mapTool.Save();
         }
 
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)

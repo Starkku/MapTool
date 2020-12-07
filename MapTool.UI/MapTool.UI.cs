@@ -2,7 +2,7 @@
  * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation, either version 3 of
+ * as published by the Free Software Foundation, either version 2 of
  * the License, or (at your option) any later version. For more
  * information, see COPYING.
  */
@@ -14,50 +14,48 @@ using System.IO;
 using System.Diagnostics;
 using System.Threading;
 using System.Reflection;
-using StarkkuUtils.FileTypes;
-using StarkkuUtils.Utilities;
+using MapTool.Logic;
+using Starkku.Utilities;
+using Starkku.Utilities.FileTypes;
+using System.Threading.Tasks;
 
 namespace MapTool.UI
 {
     public partial class MapToolUI : Form
     {
-        private readonly List<string> ValidMapExts = new List<string> { ".map", ".mpr", ".yrm" };
-        private readonly string MapToolExecutable = "MapTool.exe";
-        private readonly string ProfileDirectory = AppDomain.CurrentDomain.BaseDirectory + "Profiles";
-
-        private int HoverIndex = -1;
-        private readonly List<ListBoxProfile> Profiles = new List<ListBoxProfile>();
-        private ListBoxProfile SelectedProfile = null;
-
-        private bool WriteLogFile = false;
-        private bool ShowDebugLogging = false;
+        private readonly List<string> validMapFileExtensions = new List<string> { ".map", ".mpr", ".yrm" };
+        private readonly string profileDirectory = AppDomain.CurrentDomain.BaseDirectory + "Profiles";
+        private readonly List<ListBoxProfile> conversionProfiles = new List<ListBoxProfile>();
+        private ListBoxProfile selectedConversionProfile = null;
+        private CancellationTokenSource processMapsTaskTokenSource;
+        private int currentHoverIndex = -1;
+        private bool processMapsInProgress = false;
+        private bool processMapsCanceled = false;
+        private bool allowChangingTabs = true;
+        private bool closingForm = true;
+        private bool writeLogFile = false;
+#if DEBUG
+        private bool showDebugLog = false;
+#else
+        private bool showDebugLog = false;
+#endif
 
         public MapToolUI(string[] args)
         {
             ParseArguments(args);
-            CheckExe();
             LoadProfiles();
             InitializeComponent();
-            listProfiles.DataSource = Profiles;
-            Version v = Assembly.GetExecutingAssembly().GetName().Version;
-            Text += " v." + v.ToString();
-            if (Profiles.Count > 0 && listProfiles.SelectedIndex != -1) buttonEditProfile.Enabled = true;
-            string ext1 = "", ext2 = "";
-            for (int i = 0; i < ValidMapExts.Count; i++)
-            {
-                string delim;
-                string delim2;
-                if (i == 0) { delim = ""; delim2 = ""; }
-                else { delim = ","; delim2 = ";"; }
-                ext1 += delim + "*" + ValidMapExts[i];
-                ext2 += delim2 + "*" + ValidMapExts[i];
-            }
-            openFileDialog.Filter = "Map files (" + ext1 + ")|" + ext2;
-            if (WriteLogFile)
-            {
-                string logfile = AppDomain.CurrentDomain.BaseDirectory + Path.ChangeExtension(AppDomain.CurrentDomain.FriendlyName, ".log");
-                Logger.Initialize(logfile, true, ShowDebugLogging);
-            }
+
+            listProfiles.DataSource = conversionProfiles;
+
+            Version version = Assembly.GetExecutingAssembly().GetName().Version;
+            Text += " v." + version.ToString();
+
+            SetOpenFileDialogFilters();
+
+            string logfile = AppDomain.CurrentDomain.BaseDirectory + Path.ChangeExtension(AppDomain.CurrentDomain.FriendlyName, ".log");
+            Logger.Initialize(AddLogMessageToTextBox, logfile, writeLogFile, showDebugLog);
+            Logger.WriteTimestamps = false;
         }
 
         private void ParseArguments(string[] args)
@@ -69,12 +67,12 @@ namespace MapTool.UI
                     case "-log":
                     case "--log":
                     case "-g":
-                        WriteLogFile = true;
+                        writeLogFile = true;
                         continue;
                     case "-debug":
                     case "--debug":
                     case "-d":
-                        ShowDebugLogging = true;
+                        showDebugLog = true;
                         continue;
                     default:
                         continue;
@@ -82,233 +80,304 @@ namespace MapTool.UI
             }
         }
 
-        private void CheckExe()
+        private void SetOpenFileDialogFilters()
         {
-            if (!File.Exists(AppDomain.CurrentDomain.BaseDirectory + MapToolExecutable))
+            string extensions1 = "", extensions2 = "";
+            for (int i = 0; i < validMapFileExtensions.Count; i++)
             {
-                MessageBox.Show("Could not find the map tool executable (" + MapToolExecutable + ") in the program directory. Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
-                Close();
-                Environment.Exit(1);
+                string delim;
+                string delim2;
+
+                if (i == 0)
+                {
+                    delim = "";
+                    delim2 = "";
+                }
+                else
+                {
+                    delim = ",";
+                    delim2 = ";";
+                }
+
+                extensions1 += delim + "*" + validMapFileExtensions[i];
+                extensions2 += delim2 + "*" + validMapFileExtensions[i];
             }
+
+            openFileDialog.Filter = "Map files (" + extensions1 + ")|" + extensions2;
         }
 
         private void LoadProfiles()
         {
             string[] files = new string[0];
-            if (!Directory.Exists(ProfileDirectory))
+
+            if (!Directory.Exists(profileDirectory))
             {
-                MessageBox.Show("Could not find the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+                MessageBox.Show("Could not find the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
                 Close();
                 Environment.Exit(1);
             }
             else
             {
-                files = Directory.GetFiles(ProfileDirectory, "*.ini", SearchOption.TopDirectoryOnly);
+                files = Directory.GetFiles(profileDirectory, "*.ini", SearchOption.TopDirectoryOnly);
+
                 if (files.Length < 1)
                 {
-                    MessageBox.Show("Could not find any conversion profiles in the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+                    MessageBox.Show("Could not find any conversion profiles in the profile directory (sub-directory called 'Profiles' in the program directory). Aborting.", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
                     Close();
                     Environment.Exit(1);
                 }
             }
+
             foreach (string s in files)
             {
                 try
                 {
                     INIFile profile = new INIFile(s);
-                    if (!profile.SectionExists("ProfileData")) continue;
-                    Profiles.Add(new ListBoxProfile(s, profile.GetKey("ProfileData", "Name", Path.GetFileName(s)), profile.GetKey("ProfileData", "Description", "Description Not Available")));
+
+                    if (!profile.SectionExists("ProfileData"))
+                        continue;
+
+                    conversionProfiles.Add(new ListBoxProfile(s, profile.GetKey("ProfileData", "Name", Path.GetFileName(s)), profile.GetKey("ProfileData", "Description", "Description Not Available")));
                 }
                 catch (Exception)
                 {
                     continue;
                 }
             }
-            Profiles.Sort();
+
+            conversionProfiles.Sort();
         }
 
-        // Check if the filename is already on the list.
         private bool CheckIfDuplicate(string filename)
         {
             foreach (ListBoxFile f in listFiles.Items)
             {
-                if (f.FileName.Equals(filename)) return true;
+                if (f.Filename.Equals(filename))
+                    return true;
             }
+
             return false;
         }
 
-        private void DeleteSelectedItems()
+        private void UpdateMapListOptions()
+        {
+            buttonConvert.Enabled = listFiles.Items.Count > 0 && selectedConversionProfile != null;
+
+            if (listFiles.Items.Count < 1)
+            {
+                buttonSelect.Enabled = false;
+                toolStripMenuItemListFilesSelect.Enabled = false;
+                toolStripMenuItemListFilesDeselect.Enabled = false;
+                toolStripMenuItemListFilesRemoveAll.Enabled = false;
+            }
+            else
+            {
+                buttonSelect.Enabled = true;
+                toolStripMenuItemListFilesRemoveAll.Enabled = true;
+                toolStripMenuItemListFilesSelect.Enabled = true;
+            }
+
+            if (listFiles.SelectedIndices.Count > 0)
+            {
+                buttonRemove.Enabled = true;
+                toolStripMenuItemListFilesRemove.Enabled = true;
+                toolStripMenuItemListFilesDeselect.Enabled = true;
+                toolStripMenuItemListFilesShowExplorer.Enabled = true;
+
+                if (listFiles.SelectedIndices.Count == listFiles.Items.Count)
+                    toolStripMenuItemListFilesSelect.Enabled = false;
+                else if (listFiles.Items.Count > 0)
+                    toolStripMenuItemListFilesSelect.Enabled = true;
+            }
+            else
+            {
+                buttonRemove.Enabled = false;
+                toolStripMenuItemListFilesRemove.Enabled = false;
+                toolStripMenuItemListFilesDeselect.Enabled = false;
+                toolStripMenuItemListFilesShowExplorer.Enabled = false;
+
+                if (listFiles.Items.Count > 0)
+                    toolStripMenuItemListFilesSelect.Enabled = true;
+            }
+
+        }
+
+        private void ShowSelectedMapInExplorer()
+        {
+            List<string> filenames = new List<string>(listFiles.SelectedIndices.Count);
+
+            for (int i = 0; i < listFiles.SelectedIndices.Count; i++)
+            {
+                string filename = (listFiles.Items[i] as ListBoxFile).Filename;
+
+                if (File.Exists(filename))
+                    filenames.Add(filename);
+            }
+
+            ShowSelectedInExplorer.FilesOrFolders(filenames);
+        }
+
+        private void ShowSelectedProfileInExplorer()
+        {
+            if (listProfiles.SelectedIndex < 0)
+                return;
+
+            ShowSelectedInExplorer.FileOrFolder(selectedConversionProfile.Filename);
+        }
+
+        private void RemoveSelectedMaps()
         {
             for (int i = listFiles.SelectedIndices.Count - 1; i >= 0; i--)
             {
                 listFiles.Items.RemoveAt(listFiles.SelectedIndices[i]);
             }
-            if (listFiles.Items.Count < 1 || SelectedProfile == null) buttonConvert.Enabled = false;
-            if (listFiles.Items.Count < 1) buttonSelect.Enabled = false;
+
+            UpdateMapListOptions();
         }
 
-        private void AddMapFiles(string[] filenames)
+        private void RemoveAllMaps()
         {
-            ListBoxFile file;
+            listFiles.Items.Clear();
+            UpdateMapListOptions();
+        }
+
+        private int AddMapFiles(string[] filenames)
+        {
+            int count = 0;
+
             foreach (string filename in filenames)
             {
                 string ext = Path.GetExtension(filename);
-                if (!ValidMapExts.Contains(ext)) continue;
-                if (CheckIfDuplicate(filename)) continue;
-                file = new ListBoxFile(filename, Path.GetFileName(filename), filename);
-                listFiles.Items.Add(file);
+
+                if (!validMapFileExtensions.Contains(ext))
+                    continue;
+
+                if (CheckIfDuplicate(filename))
+                    continue;
+
+                listFiles.Items.Add(new ListBoxFile(filename, Path.GetFileName(filename), filename));
+                count++;
             }
-            if (listFiles.Items.Count > 0 && SelectedProfile != null) buttonConvert.Enabled = true;
-            if (listFiles.Items.Count > 0) buttonSelect.Enabled = true;
+
+            UpdateMapListOptions();
+
+            int visibleItems = listFiles.ClientSize.Height / listFiles.ItemHeight;
+            listFiles.TopIndex = Math.Max(listFiles.Items.Count - visibleItems + 1, 0);
+
+            return count;
         }
 
-        // Drag & drop stuff.
-        private void ListFiles_DragEnter(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
-            else e.Effect = DragDropEffects.None;
-        }
+        private void DeselectAllMaps() => listFiles.SelectedIndex = -1;
 
-        // Add drag & dropped files into the list.
-        private void ListFiles_DragDrop(object sender, DragEventArgs e)
+        private void SelectAllMaps()
         {
-            List<string> filenames = new List<string>();
-
-            foreach (string s in (string[])e.Data.GetData(DataFormats.FileDrop, false))
+            for (int i = 0; i < listFiles.Items.Count; i++)
             {
-                if (Directory.Exists(s))
-                {
-                    filenames.AddRange(Directory.GetFiles(s));
-                }
-                else
-                {
-                    filenames.Add(s);
-                }
+                listFiles.SetSelected(i, true);
             }
-            AddMapFiles(filenames.ToArray());
-        }
-
-        // Show tooltips for the items displaying the full file path.
-        private void ListFiles_MouseMove(object sender, MouseEventArgs e)
-        {
-            int newhoveridx = listFiles.IndexFromPoint(e.Location);
-
-            if (HoverIndex != newhoveridx)
-            {
-                HoverIndex = newhoveridx;
-                if (HoverIndex > -1)
-                {
-                    toolTip.Active = false;
-                    ListBoxFile f = listFiles.Items[HoverIndex] as ListBoxFile;
-                    toolTip.SetToolTip(listFiles, f.Tooltip);
-                    toolTip.Active = true;
-                }
-            }
-        }
-
-        private void ButtonRemove_Click(object sender, EventArgs e)
-        {
-            DeleteSelectedItems();
-        }
-
-        private void ListFiles_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Delete)
-            {
-                DeleteSelectedItems();
-            }
-        }
-
-        private void ListFiles_SelectedValueChanged(object sender, EventArgs e)
-        {
-            if (listFiles.SelectedIndices.Count > 0) buttonRemove.Enabled = true;
-            else buttonRemove.Enabled = false;
         }
 
         private void ButtonConvert_Click(object sender, EventArgs e)
         {
+            tabControl.SelectedTab = tabPageLogger;
+            processMapsCanceled = false;
             textBoxLogger.Text = "";
-            AppendToLog("Processing maps.\r\n");
-            tabControl.SelectedIndex = 1;
-            ThreadPool.QueueUserWorkItem(delegate (object state)
-            {
-                ToggleControlState(false);
-                foreach (ListBoxFile f in listFiles.Items)
-                {
-                    ProcessMap(f.FileName);
-                }
-                ToggleControlState(true);
-                AppendToLog("Processed all maps.");
-                AppendToLog("");
-            });
+            ToggleControlState(false);
+            processMapsInProgress = true;
+            Logger.Info("Starting processing of maps.");
+            WriteLogMessage("");
+            processMapsTaskTokenSource = new CancellationTokenSource();
+            Task task = Task.Factory.StartNew(() => ProcessMaps(processMapsTaskTokenSource.Token), processMapsTaskTokenSource.Token);
+            task.ContinueWith(ProcessMapsFinished);
         }
-        private void ProcessMap(string filename)
-        {
-            string outputfilename = Path.GetDirectoryName(filename) + "\\" + Path.GetFileNameWithoutExtension(filename) + "_altered" + Path.GetExtension(filename);
-            if (cbOverwrite.Checked) outputfilename = filename;
-            string extra = "";
-            if (WriteLogFile) 
-                extra += " -debug";
-            string cmd = "-i=\"" + filename + "\" -o=\"" + outputfilename + "\" -p=\"" + SelectedProfile.FileName + "\"" + extra;
 
+        private void ProcessMaps(CancellationToken cancellationToken)
+        {
             try
             {
-                var p = new Process { StartInfo = { FileName = AppDomain.CurrentDomain.BaseDirectory + MapToolExecutable, Arguments = cmd } };
-
-                // Catch the command line output to display in log.
-                p.OutputDataReceived += ConsoleDataReceived;
-                p.StartInfo.CreateNoWindow = true;
-                p.StartInfo.RedirectStandardOutput = true;
-                p.StartInfo.UseShellExecute = false;
-                p.Start();
-
-                p.BeginOutputReadLine();
-                p.WaitForExit();
-                if (p.ExitCode == 0)
+                foreach (ListBoxFile f in listFiles.Items)
                 {
-                    AppendToLog("");
-                    AppendToLog("Successfully finished processing map '" + filename + "'.");
+                    ProcessMap(f.Filename);
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
-                else
-                {
-                    AppendToLog("");
-                    AppendToLog("Processing on map '" + filename + "' failed.");
-                }
-                AppendToLog("");
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
             {
-                AppendToLog("Error encountered. Message: " + e.Message);
+                processMapsCanceled = true;
             }
         }
-        private void ConsoleDataReceived(object sender, DataReceivedEventArgs e)
+
+        private void ProcessMapsFinished(Task task)
         {
-            AppendToLog(e.Data);
+            ToggleControlState(true);
+            processMapsInProgress = false;
+
+            if (task.IsCompleted && processMapsCanceled)
+                Logger.Info("Processing of maps canceled.");
+            else if (task.IsFaulted)
+                Logger.Info("Processing of maps canceled due to an error.");
+            else
+                Logger.Info("Processing of all maps completed successfully.");
+
+            if (closingForm)
+            {
+                Invoke((MethodInvoker)delegate
+                {
+                    Close();
+                });
+            }
         }
 
-        private delegate void LogDelegate(string str);
-        private void AppendToLog(string str)
+        private void ProcessMap(string filename)
         {
-            if (str == null) return;
+            Logger.Info("Processing map: " + filename);
+
+            string outputfilename = Path.GetDirectoryName(filename) + Path.DirectorySeparatorChar + Path.GetFileNameWithoutExtension(filename) + "_altered" + Path.GetExtension(filename);
+
+            if (cbOverwrite.Checked)
+                outputfilename = filename;
+
+            MapFileTool mapTool = new MapFileTool(filename, outputfilename, selectedConversionProfile.Filename, false);
+
+            if (mapTool.Initialized)
+            {
+                mapTool.ConvertTileData();
+                mapTool.ConvertOverlayData();
+                mapTool.ConvertObjectData();
+                mapTool.ConvertSectionData();
+                mapTool.ConvertTheaterData();
+                mapTool.Save();
+            }
+
+            WriteLogMessage("");
+        }
+
+        private void WriteLogMessage(string logMessage)
+        {
+            AddLogMessageToTextBox(logMessage);
+            Logger.LogToFileOnly(logMessage);
+        }
+
+        private delegate void LogDelegate(string logMessage);
+
+        private void AddLogMessageToTextBox(string logMessage)
+        {
+            if (logMessage == null)
+                return;
+
             if (InvokeRequired)
             {
-                Invoke(new LogDelegate(AppendToLog), str);
+                Invoke(new LogDelegate(AddLogMessageToTextBox), logMessage);
                 return;
             }
-            bool skipTextBoxLogging = false;
-            if (!ShowDebugLogging && str.Contains("[Debug]") && str.Length >= 8)
-            {
-                string strTrimTime = str.Substring(8);
-                if (strTrimTime.StartsWith("[Debug]"))
-                    skipTextBoxLogging = true;
-            }
-            if (!skipTextBoxLogging)
-                textBoxLogger.AppendText(str + "\r\n");
-            if (WriteLogFile)
-                Logger.LogToFileOnly(str);
+
+            textBoxLogger.AppendText(logMessage + Environment.NewLine);
         }
 
         private delegate void ControlStateDelegate(bool enable);
+
         private void ToggleControlState(bool enable)
         {
             if (InvokeRequired)
@@ -316,122 +385,212 @@ namespace MapTool.UI
                 Invoke(new ControlStateDelegate(ToggleControlState), enable);
                 return;
             }
+
             listFiles.Enabled = enable;
             listProfiles.Enabled = enable;
             buttonBrowse.Enabled = enable;
             buttonConvert.Enabled = enable;
             buttonSelect.Enabled = enable;
             buttonRemove.Enabled = enable;
+            allowChangingTabs = enable;
         }
 
+        private void MapToolUI_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (processMapsInProgress)
+            {
+                DialogResult dialogResult = MessageBox.Show("MapTool is still processing maps. If you are certain you want to close the program, choose 'Yes' and it will close after current map has been processed.",
+                    "Map Processing In Progress", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+
+                if (dialogResult == DialogResult.No)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+            }
+
+            if (processMapsTaskTokenSource != null && !processMapsTaskTokenSource.IsCancellationRequested)
+            {
+                e.Cancel = true;
+                processMapsTaskTokenSource.Cancel();
+                closingForm = true;
+            }
+        }
+
+        private void MapToolUI_DragEnter(object sender, DragEventArgs e)
+        {
+            if (processMapsInProgress)
+                return;
+
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Copy;
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
+        private void MapToolUI_DragDrop(object sender, DragEventArgs e)
+        {
+            if (processMapsInProgress)
+                return;
+
+            List<string> filenames = new List<string>();
+
+            foreach (string s in (string[])e.Data.GetData(DataFormats.FileDrop, false))
+            {
+                if (Directory.Exists(s))
+                    filenames.AddRange(Directory.GetFiles(s));
+                else
+                    filenames.Add(s);
+            }
+
+            int count = AddMapFiles(filenames.ToArray());
+
+            if (count > 0)
+                tabControl.SelectedTab = tabPageMain;
+        }
+
+        private void TabControl_Deselecting(object sender, TabControlCancelEventArgs e)
+        {
+            if (!allowChangingTabs)
+                e.Cancel = true;
+        }
+
+        private void TabControl_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (tabControl.SelectedTab == tabPageLogger && processMapsInProgress)
+                textBoxLogger.Focus();
+        }
 
         private void ListProfiles_SelectedIndexChanged(object sender, EventArgs e)
         {
             try
             {
-                SelectedProfile = Profiles[listProfiles.SelectedIndex];
-                labelProfileDescription.Text = SelectedProfile.Description;
+                selectedConversionProfile = conversionProfiles[listProfiles.SelectedIndex];
+                labelProfileDescription.Text = selectedConversionProfile.Description;
             }
             catch (Exception)
             {
-
-                SelectedProfile = null;
+                selectedConversionProfile = null;
             }
-            if (SelectedProfile == null || listFiles.Items.Count < 1) buttonConvert.Enabled = false;
+
+            if (selectedConversionProfile == null || listFiles.Items.Count < 1)
+                buttonConvert.Enabled = false;
         }
+
+        private void ListFiles_MouseMove(object sender, MouseEventArgs e)
+        {
+            int newHoverIndex = listFiles.IndexFromPoint(e.Location);
+
+            if (currentHoverIndex != newHoverIndex)
+            {
+                currentHoverIndex = newHoverIndex;
+
+                if (currentHoverIndex > -1)
+                {
+                    toolTip.Active = false;
+                    ListBoxFile f = listFiles.Items[currentHoverIndex] as ListBoxFile;
+                    toolTip.SetToolTip(listFiles, f.Tooltip);
+                    toolTip.Active = true;
+                }
+            }
+        }
+
+        private void ListFiles_SelectedValueChanged(object sender, EventArgs e) => UpdateMapListOptions();
 
         private void ButtonBrowse_Click(object sender, EventArgs e)
         {
             if (openFileDialog.ShowDialog() == DialogResult.OK)
-            {
                 AddMapFiles(openFileDialog.FileNames);
-            }
         }
 
         private void ButtonSelect_Click(object sender, EventArgs e)
         {
             if (listFiles.SelectedIndices.Count > 0)
-            {
-                listFiles.SelectedIndex = -1;
-            }
+                DeselectAllMaps();
             else
-            {
-                for (int i = 0; i < listFiles.Items.Count; i++)
-                {
-                    listFiles.SetSelected(i, true);
-                }
-            }
+                SelectAllMaps();
         }
 
-        private void ButtonEditProfile_Click(object sender, EventArgs e)
+        private void ButtonRemove_Click(object sender, EventArgs e) => RemoveSelectedMaps();
+
+        private void TextBoxLogger_TextChanged(object sender, EventArgs e)
         {
-            Process.Start(SelectedProfile.FileName);
+            if (!textBoxLogger.Focused && tabControl.SelectedTab == tabPageLogger)
+                textBoxLogger.Focus();
         }
 
-        private void MapFixer_KeyDown(object sender, KeyEventArgs e)
+        private void LinkLabel_OpenLink(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            if (e.KeyCode == Keys.D && e.Modifiers == Keys.Alt)
-            {
-            }
+            if (!(sender is LinkLabel))
+                return;
 
+            LinkLabel linkLabel = sender as LinkLabel;
+            string url;
+
+            if (e.Link.LinkData != null)
+                url = e.Link.LinkData.ToString();
+            else
+                url = linkLabel.Text.Substring(e.Link.Start, e.Link.Length);
+
+            if (!url.Contains("://"))
+                url = "https://" + url;
+
+            Process.Start(url);
+            linkLabel.LinkVisited = true;
         }
 
-        private void LinkLabelAboutGithub_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void ToolStripItemListFilesRemove_Click(object sender, EventArgs e) => RemoveSelectedMaps();
+
+        private void ToolStripItemListFilesRemoveAll_Click(object sender, EventArgs e) => RemoveAllMaps();
+
+        private void ToolStripMenuItemListFilesSelect_Click(object sender, EventArgs e) => SelectAllMaps();
+
+        private void ToolStripMenuItemListFilesDeselect_Click(object sender, EventArgs e) => DeselectAllMaps();
+
+        private void ToolStripMenuItemListFilesShowExplorer_Click(object sender, EventArgs e) => ShowSelectedMapInExplorer();
+
+        private void ToolStripItemListProfilesEdit_Click(object sender, EventArgs e)
         {
-            Process.Start("https://github.com/Starkku/MapTool");
+            if (File.Exists(selectedConversionProfile.Filename))
+                Process.Start(selectedConversionProfile.Filename);
         }
 
-        private void LinkLabelAboutOpenRA_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            Process.Start("https://github.com/OpenRA/OpenRA");
-        }
-
-        private void LinkLabelRenderer_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            Process.Start("https://github.com/zzattack/ccmaps-net");
-        }
+        private void ToolStripItemListProfilesShowExplorer_Click(object sender, EventArgs e) => ShowSelectedProfileInExplorer();
     }
 
-    class ListBoxFile
+    internal class ListBoxFile
     {
-        public string FileName { get; set; }
+        public string Filename { get; set; }
         public string DisplayName { get; set; }
         public string Tooltip { get; set; }
 
-        public ListBoxFile(string filename, string displayname, string tooltip)
+        public ListBoxFile(string filename, string displayName, string tooltip)
         {
-            FileName = filename;
-            DisplayName = displayname;
+            Filename = filename;
+            DisplayName = displayName;
             Tooltip = tooltip;
         }
 
-        public override string ToString()
-        {
-            return DisplayName;
-        }
+        public override string ToString() => DisplayName;
+
     }
 
-    class ListBoxProfile : IComparable<ListBoxProfile>
+    internal class ListBoxProfile : IComparable<ListBoxProfile>
     {
-        public string FileName { get; set; }
+        public string Filename { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
 
         public ListBoxProfile(string filename, string name, string description)
         {
-            FileName = filename;
+            Filename = filename;
             Name = name;
             Description = description;
         }
 
-        public override string ToString()
-        {
-            return Name;
-        }
+        public override string ToString() => Name;
 
-        public int CompareTo(ListBoxProfile other)
-        {
-            return Name.CompareTo(other.Name);
-        }
+        public int CompareTo(ListBoxProfile other) => Name.CompareTo(other.Name);
+
     }
 }

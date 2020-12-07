@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapTool.UI", "MapTool.UI\MapTool.UI.csproj", "{7F418E35-AB7B-4D20-88FA-08C214D3D9B1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapTool.Logic", "MapTool.Logic\MapTool.Logic.csproj", "{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +38,14 @@ Global
 		{7F418E35-AB7B-4D20-88FA-08C214D3D9B1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7F418E35-AB7B-4D20-88FA-08C214D3D9B1}.Release|x86.ActiveCfg = Release|x86
 		{7F418E35-AB7B-4D20-88FA-08C214D3D9B1}.Release|x86.Build.0 = Release|x86
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Debug|x86.Build.0 = Debug|Any CPU
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Release|x86.ActiveCfg = Release|Any CPU
+		{D0F68844-37CF-4DE4-A0B9-9BAF3C85F8E7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

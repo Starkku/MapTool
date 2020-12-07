@@ -2,7 +2,7 @@
  * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation, either version 3 of
+ * as published by the Free Software Foundation, either version 2 of
  * the License, or (at your option) any later version. For more
  * information, see COPYING.
  */
@@ -13,12 +13,12 @@ using System.Linq;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Globalization;
-using MapTool.DataStructures;
-using StarkkuUtils.FileTypes;
-using StarkkuUtils.Utilities;
-using StarkkuUtils.ExtensionMethods;
+using System.Reflection;
+using Starkku.Utilities;
+using Starkku.Utilities.FileTypes;
+using Starkku.Utilities.ExtensionMethods;
 
-namespace MapTool
+namespace MapTool.Logic
 {
     /// <summary>
     /// Map tile data sort mode.
@@ -28,7 +28,7 @@ namespace MapTool
     /// <summary>
     /// Map file modifier tool class.
     /// </summary>
-    public class MapTool
+    public class MapFileTool
     {
         #region public_properties
 
@@ -36,11 +36,6 @@ namespace MapTool
         /// Has tool been initialized or not.
         /// </summary>
         public bool Initialized { get; private set; }
-
-        /// <summary>
-        /// Has map file been altered or not.
-        /// </summary>
-        public bool MapAltered { get; private set; }
 
         /// <summary>
         /// Map input filename.
@@ -59,42 +54,7 @@ namespace MapTool
         /// <summary>
         /// Map file.
         /// </summary>
-        private readonly INIFile mapINI;
-
-        /// <summary>
-        /// Map theater.
-        /// </summary>
-        private readonly string mapTheater = null;
-
-        /// <summary>
-        /// Map full width.
-        /// </summary>
-        private readonly int mapWidth;
-
-        /// <summary>
-        /// Map full height.
-        /// </summary>
-        private readonly int mapHeight;
-
-        /// <summary>
-        /// Map tile data.
-        /// </summary>
-        private List<MapTile> isoMapPack5 = new List<MapTile>();
-
-        /// <summary>
-        /// Map overlay ID data.
-        /// </summary>
-        private byte[] overlayPack = null;
-
-        /// <summary>
-        /// Map overlay frame data.
-        /// </summary>
-        private byte[] overlayDataPack = null;
-
-        /// <summary>
-        /// Look-up table for map coordinate (X,Y) validity.
-        /// </summary>
-        private bool[,] coordinateValidityLUT;
+        private readonly MapFile map;
 
         /// <summary>
         /// Conversion profile INI file.
@@ -172,11 +132,6 @@ namespace MapTool
         private readonly INIFile theaterConfigINI;
 
         /// <summary>
-        /// OverlayPack/DataPack length.
-        /// </summary>
-        private const int OVERLAY_DATA_LENGTH = 262144;
-
-        /// <summary>
         /// Random number generator.
         /// </summary>
         private readonly Random random = new Random();
@@ -190,10 +145,9 @@ namespace MapTool
         /// <param name="outputFile">Output file name.</param>
         /// <param name="fileConfig">Conversion profile file name.</param>
         /// <param name="listTheaterData">If set, it is assumed that this instance of MapTool is initialized for listing theater data rather than processing maps.</param>
-        public MapTool(string inputFile, string outputFile, string fileConfig, bool listTheaterData)
+        public MapFileTool(string inputFile, string outputFile, string fileConfig, bool listTheaterData)
         {
             Initialized = false;
-            MapAltered = false;
             FilenameInput = inputFile;
             FilenameOutput = outputFile;
 
@@ -204,17 +158,9 @@ namespace MapTool
 
             else if (!string.IsNullOrEmpty(FilenameInput) && !string.IsNullOrEmpty(FilenameOutput))
             {
+                Logger.Info("Initializing map file '" + FilenameInput + "'.");
 
-                Logger.Info("Reading map file '" + inputFile + "'.");
-                mapINI = new INIFile(inputFile);
-
-                string[] size = mapINI.GetKey("Map", "Size", "").Split(',');
-                mapWidth = Conversion.GetIntFromString(size[2], -1);
-                mapHeight = Conversion.GetIntFromString(size[3], -1);
-
-                mapTheater = mapINI.GetKey("Map", "Theater", null);
-                if (mapTheater != null)
-                    mapTheater = mapTheater.ToUpper();
+                map = new MapFile(FilenameInput);
 
                 Logger.Info("Parsing conversion profile file.");
                 conversionProfileINI = new INIFile(fileConfig);
@@ -251,25 +197,31 @@ namespace MapTool
 
                 // Parse tile data options.
                 string sortMode = conversionProfileINI.GetKey("IsoMapPack5", "SortBy", null);
+
                 if (sortMode != null)
                 {
                     Enum.TryParse(sortMode.Replace("_", ""), true, out isoMapPack5SortBy);
                 }
+
                 removeLevel0ClearTiles = Conversion.GetBoolFromString(conversionProfileINI.GetKey("IsoMapPack5", "RemoveLevel0ClearTiles", "false"), false);
 
                 // Parse theater rules.
                 newTheater = conversionProfileINI.GetKey("TheaterRules", "NewTheater", null);
+
                 if (newTheater != null)
                     newTheater = newTheater.ToUpper();
 
                 string[] applicableTheaters = conversionProfileINI.GetKey("TheaterRules", "ApplicableTheaters", "").Split(',');
+
                 if (applicableTheaters != null)
                 {
                     for (int i = 0; i < applicableTheaters.Length; i++)
                     {
                         string theater = applicableTheaters[i].Trim().ToUpper();
+
                         if (theater == "")
                             continue;
+
                         this.applicableTheaters.Add(theater);
                     }
                 }
@@ -279,6 +231,7 @@ namespace MapTool
 
                 // Parse theater-specific global tile offsets.
                 string[] theaterOffsetKeys = conversionProfileINI.GetKeys("TheaterTileOffsets");
+
                 if (theaterOffsetKeys != null)
                 {
                     foreach (string key in theaterOffsetKeys)
@@ -286,6 +239,7 @@ namespace MapTool
                         int newOffset = int.MinValue;
                         string[] values = conversionProfileINI.GetKey("TheaterTileOffsets", key, "").Split(',');
                         int originalOffset;
+
                         if (values.Length < 1)
                             continue;
                         else if (values.Length < 2)
@@ -297,6 +251,7 @@ namespace MapTool
                             originalOffset = Conversion.GetIntFromString(values[0], 0);
                             newOffset = Conversion.GetIntFromString(values[1], int.MinValue);
                         }
+
                         theaterTileOffsets.Add(key.ToUpper(), new Tuple<int, int>(originalOffset, newOffset));
                     }
                 }
@@ -335,35 +290,37 @@ namespace MapTool
         {
             if (deleteObjectsOutsideMapBounds)
             {
-                if (mapWidth > 0 && mapHeight > 0)
+                if (map.FullWidth > 0 && map.FullWidth > 0)
                 {
                     Logger.Info("DeleteObjectsOutsideMapBounds set: Objects & overlays outside map bounds will be deleted.");
-                    CalculateCoordinateValidity();
                     DeleteObjectsOutsideBounds();
                     DeleteOverlaysOutsideBounds();
                 }
                 else
                     Logger.Warn("DeleteObjectsOutsideMapBounds set but because map has invalid Size value set, no objects or overlays will be deleted.");
             }
+
             if (useMapOptimize)
             {
                 Logger.Info("ApplyMapOptimization set: Saved map will have map section order optimizations applied.");
-                mapINI.MoveSectionToFirst("Basic");
-                mapINI.MoveSectionToFirst("MultiplayerDialogSettings");
-                mapINI.MoveSectionToLast("Digest");
-                MapAltered = true;
+                map.MoveSectionToFirst("Basic");
+                map.MoveSectionToFirst("MultiplayerDialogSettings");
+                map.MoveSectionToLast("Digest");
             }
+
             if (fixTunnels)
             {
                 Logger.Info("FixTunnels set: Saved map will have [Tubes] section fixed to remove errors caused by map editor.");
                 FixTubesSection();
             }
+
             if (useMapCompress)
                 Logger.Info("ApplyMapCompress set: Saved map will have no unnecessary whitespaces or comments.");
 
             string error;
-            if (MapAltered || useMapCompress)
-                error = mapINI.Save(FilenameOutput, !useMapCompress, !useMapCompress);
+
+            if (map.Altered || useMapCompress)
+                error = map.Save(FilenameOutput, !useMapCompress, !useMapCompress);
             else
             {
                 Logger.Info("Skipping saving map file as no changes have been made to it.");
@@ -380,205 +337,29 @@ namespace MapTool
         }
 
         /// <summary>
-        /// Checks if theater name is valid.
-        /// </summary>
-        /// <param name="theaterName">Theater name.</param>
-        /// <returns>True if a valid theater name, otherwise false.</returns>
-        public static bool IsValidTheaterName(string theaterName)
-        {
-            if (theaterName == "TEMPERATE" || theaterName == "SNOW" || theaterName == "LUNAR" || theaterName == "DESERT" ||
-                theaterName == "URBAN" || theaterName == "NEWURBAN")
-                return true;
-
-            return false;
-        }
-
-        /// <summary>
         /// Checks if the currently set map theater exists in current list of theaters the map tool is allowed to process.
         /// </summary>
         /// <returns>True if map theater exists in applicable theaters, otherwise false.</returns>
         private bool IsCurrentTheaterAllowed()
         {
-            if (applicableTheaters == null || mapTheater == null || !applicableTheaters.Contains(mapTheater))
+            if (applicableTheaters == null || map.Theater == null || !applicableTheaters.Contains(map.Theater))
                 return false;
 
             return true;
         }
-
-        #region map_pack_handling
-
-        /// <summary>
-        /// Parses IsoMapPack5 section of the map file.
-        /// </summary>
-        /// <returns>Error message if something went wrong, otherwise null.</returns>
-        private string ParseMapPack()
-        {
-            int cellCount;
-            byte[] isoMapPack;
-
-            if (mapHeight < 1 || mapWidth < 1)
-                return ("Map Size is invalid.");
-
-            cellCount = (mapWidth * 2 - 1) * mapHeight;
-            int lzoPackSize = cellCount * 11 + 4;
-            isoMapPack = new byte[lzoPackSize];
-
-            // Fill up and filter later
-            int j = 0;
-            for (int i = 0; i < cellCount; i++)
-            {
-                isoMapPack[j] = 0x88;
-                isoMapPack[j + 1] = 0x40;
-                isoMapPack[j + 2] = 0x88;
-                isoMapPack[j + 3] = 0x40;
-                j += 11;
-            }
-
-            string errorMessage = ParseEncodedMapSectionData("IsoMapPack5", ref isoMapPack);
-            if (errorMessage != null)
-                return errorMessage;
-
-            int bytesRead = 0;
-            for (int i = 0; i < cellCount; i++)
-            {
-                ushort x = BitConverter.ToUInt16(isoMapPack, bytesRead);
-                bytesRead += 2;
-                ushort y = BitConverter.ToUInt16(isoMapPack, bytesRead);
-                bytesRead += 2;
-                int tileNum = BitConverter.ToInt32(isoMapPack, bytesRead);
-                bytesRead += 4;
-                byte subTile = isoMapPack[bytesRead++];
-                byte level = isoMapPack[bytesRead++];
-                byte iceGrowth = isoMapPack[bytesRead++];
-                if (x > 0 && y > 0 && x <= 16384 && y <= 16384)
-                {
-                    isoMapPack5.Add(new MapTile((short)x, (short)y, tileNum, subTile, level, iceGrowth));
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Saves IsoMapPack5 section of the map file.
-        /// </summary>
-        private void SaveMapPack()
-        {
-            if (!Initialized || isoMapPack5.Count < 1)
-                return;
-
-            byte[] isoMapPack = new byte[isoMapPack5.Count * 11 + 4];
-            int i = 0;
-
-            foreach (MapTile t in isoMapPack5)
-            {
-                byte[] x = BitConverter.GetBytes(t.X);
-                byte[] y = BitConverter.GetBytes(t.Y);
-                byte[] tilei = BitConverter.GetBytes(t.TileIndex);
-                isoMapPack[i] = x[0];
-                isoMapPack[i + 1] = x[1];
-                isoMapPack[i + 2] = y[0];
-                isoMapPack[i + 3] = y[1];
-                isoMapPack[i + 4] = tilei[0];
-                isoMapPack[i + 5] = tilei[1];
-                isoMapPack[i + 6] = tilei[2];
-                isoMapPack[i + 7] = tilei[3];
-                isoMapPack[i + 8] = t.SubTileIndex;
-                isoMapPack[i + 9] = t.Level;
-                isoMapPack[i + 10] = t.IceGrowth;
-                i += 11;
-            }
-
-            byte[] lzo = MapPackHelper.Compress(isoMapPack);
-            string data = Convert.ToBase64String(lzo, Base64FormattingOptions.None);
-            ReplacePackedSectionData("IsoMapPack5", data);
-        }
-
-        /// <summary>
-        /// Parses Overlay(Data)Pack sections of the map file.
-        /// </summary>
-        private void ParseOverlayPacks()
-        {
-            overlayPack = new byte[1 << 18];
-            string errorMessage = ParseEncodedMapSectionData("OverlayPack", ref overlayPack, true);
-            if (errorMessage != null)
-                Logger.Warn(errorMessage);
-
-            overlayDataPack = new byte[1 << 18];
-            errorMessage = ParseEncodedMapSectionData("OverlayDataPack", ref overlayDataPack, true);
-            if (errorMessage != null)
-                Logger.Warn(errorMessage);
-        }
-
-
-        /// <summary>
-        /// Saves Overlay(Data)Pack sections of the map file.
-        /// </summary>
-        private void SaveOverlayPacks()
-        {
-            string base64_overlayPack = Convert.ToBase64String(MapPackHelper.Compress(overlayPack, true), Base64FormattingOptions.None);
-            string base64_overlayDataPack = Convert.ToBase64String(MapPackHelper.Compress(overlayDataPack, true), Base64FormattingOptions.None);
-            ReplacePackedSectionData("OverlayPack", base64_overlayPack);
-            ReplacePackedSectionData("OverlayDataPack", base64_overlayDataPack);
-        }
-
-        /// <summary>
-        /// Parses and decompresses Base64-encoded and compressed data from specified section of map file.
-        /// </summary>
-        /// <param name="sectionName">Name of the section.</param>
-        /// <param name="outputData">Array to put the decompressed data to.</param>
-        /// <param name="useLCW">If set to true, treat data as LCW-compressed instead of LZO.</param>
-        /// <returns>Error message if something went wrong, otherwise null.</returns>
-        private string ParseEncodedMapSectionData(string sectionName, ref byte[] outputData, bool useLCW = false)
-        {
-            Logger.Info("Parsing " + sectionName + ".");
-            string[] values = mapINI.GetValues(sectionName);
-            if (values == null || values.Length < 1)
-                return sectionName + " data is empty.";
-            byte[] compressedData;
-            try
-            {
-                compressedData = Convert.FromBase64String(string.Join("", values));
-            }
-            catch (Exception)
-            {
-                return sectionName + " is malformed.";
-            }
-            if (MapPackHelper.Decompress(compressedData, outputData, out _, useLCW))
-            {
-                return null;
-            }
-            else
-            {
-                return sectionName + " data is invalid or corrupted.";
-            }
-        }
-
-        /// <summary>
-        /// Replaces contents of a Base64-encoded section of map file.
-        /// </summary>
-        /// <param name="sectionName">Name of the section.</param>
-        /// <param name="data">Contents to replace the existing contents with.</param>
-        private void ReplacePackedSectionData(string sectionName, string data)
-        {
-            int lx = 70;
-            List<string> lines = new List<string>();
-            for (int x = 0; x < data.Length; x += lx)
-            {
-                lines.Add(data.Substring(x, Math.Min(lx, data.Length - x)));
-            }
-            mapINI.ReplaceSectionWithStrings(sectionName, lines);
-        }
-
-        #endregion
 
         #region conversion_rule_parsing
 
         /// <summary>
         /// Parses conversion profile information for tile conversion rules.
         /// </summary>
-        private void ParseConversionRules(string[] ruleStrings, List<TileConversionRule> currentRules)
+        /// <param name="ruleStrings">Rules to parse.</param>
+        /// <param name="currentRules">Tile conversion rules to replace with parsed rules.</param>
+        private void ParseConversionRules(IEnumerable<string> ruleStrings, List<TileConversionRule> currentRules)
         {
-            if (ruleStrings == null || ruleStrings.Length < 1 || currentRules == null) return;
+            if (ruleStrings == null || !ruleStrings.Any() || currentRules == null)
+                return;
+
             currentRules.Clear();
 
             foreach (string ruleString in ruleStrings)
@@ -596,41 +377,66 @@ namespace MapTool
                 int heightOverride = -1;
                 int subTileOverride = -1;
                 int iceGrowthOverride = -1;
+
                 if (values.Length >= 3 && values[2] != null && !values[2].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
                     heightOverride = Conversion.GetIntFromString(values[2], -1);
                 }
+
                 if (values.Length >= 4 && values[3] != null && !values[3].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
                     subTileOverride = Conversion.GetIntFromString(values[3], -1);
                 }
+
                 if (values.Length >= 5 && values[4] != null && !values[4].Equals("*", StringComparison.InvariantCultureIgnoreCase))
                 {
                     iceGrowthOverride = Conversion.GetIntFromString(values[4], -1);
                 }
 
+                int oldSubValueStart = -1, oldSubValueEnd = -1, newSubValueStart = -1, newSubValueEnd = -1;
+                bool oldSubValueIsRange = false, newSubValueIsRange = false, newSubValueIsRandom = false;
+
+                if (values.Length >= 6)
+                {
+                    ParseValueRange(values[5], out oldSubValueStart, out oldSubValueEnd, out oldSubValueIsRange, out _);
+                }
+
+                if (values.Length >= 7)
+                {
+                    ParseValueRange(values[6], out newSubValueStart, out newSubValueEnd, out newSubValueIsRange, out newSubValueIsRandom, true);
+                }
+
+                int oldTileEnd = oldValueEnd;
+                int newTileEnd = newValueEnd;
+
                 if (oldValueIsRange && !newValueIsRange)
-                {
-                    int diff = newValueStart + (oldValueEnd - newValueStart);
-                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueEnd, diff, newValueIsRandom, heightOverride, subTileOverride, iceGrowthOverride, coordFilterX, coordFilterY));
-                }
-                else if (!oldValueIsRange && newValueIsRange)
-                {
-                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueStart, newValueEnd, newValueIsRandom, heightOverride, subTileOverride, iceGrowthOverride, coordFilterX, coordFilterY));
-                }
-                else
-                {
-                    currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldValueEnd, newValueEnd, newValueIsRandom, heightOverride, subTileOverride, iceGrowthOverride, coordFilterX, coordFilterY));
-                }
+                    newTileEnd = newValueStart + (oldValueEnd - oldValueStart);
+                else if (!oldValueIsRange)
+                    oldTileEnd = oldValueStart;
+
+                int oldSubEnd = oldSubValueEnd;
+                int newSubEnd = newSubValueEnd;
+
+                if (oldSubValueIsRange && !newSubValueIsRange)
+                    newSubEnd = newSubValueStart + (oldSubValueEnd - oldSubValueStart);
+                else if (!oldSubValueIsRange)
+                    oldSubEnd = oldSubValueStart;
+
+                currentRules.Add(new TileConversionRule(oldValueStart, newValueStart, oldTileEnd, newTileEnd, newValueIsRandom,
+                    heightOverride, subTileOverride, iceGrowthOverride, coordFilterX, coordFilterY, oldSubValueStart, newSubValueStart, oldSubEnd, newSubEnd, newSubValueIsRandom));
             }
         }
 
         /// <summary>
         /// Parses conversion profile information for overlay conversion rules.
         /// </summary>
-        private void ParseConversionRules(string[] ruleStrings, List<OverlayConversionRule> currentRules)
+        /// <param name="ruleStrings">Rules to parse.</param>
+        /// <param name="currentRules">Overlay conversion rules to replace with parsed rules.</param>
+        private void ParseConversionRules(IEnumerable<string> ruleStrings, List<OverlayConversionRule> currentRules)
         {
-            if (ruleStrings == null || ruleStrings.Length < 1 || currentRules == null) return;
+            if (ruleStrings == null || !ruleStrings.Any() || currentRules == null)
+                return;
+
             currentRules.Clear();
 
             foreach (string ruleString in ruleStrings)
@@ -653,7 +459,7 @@ namespace MapTool
                 if (frameOldValueIsRange && !frameNewValueIsRange)
                 {
                     frameOldEndIndex = frameOldValueEnd;
-                    frameNewEndIndex = frameNewValueStart + (frameOldValueEnd - frameNewValueStart);
+                    frameNewEndIndex = frameNewValueStart + (frameOldValueEnd - frameOldValueStart);
                 }
                 else if (!frameOldValueIsRange && frameNewValueIsRange)
                 {
@@ -703,6 +509,7 @@ namespace MapTool
                 string[] parts = value.Split('~');
                 valueA = Conversion.GetIntFromString(parts[0], -1);
                 valueB = Conversion.GetIntFromString(parts[1], -1);
+
                 if (valueA < 0 || valueB < 0)
                     return false;
             }
@@ -712,25 +519,28 @@ namespace MapTool
                 string[] parts = value.Split('-');
                 valueA = Conversion.GetIntFromString(parts[0], -1);
                 valueB = Conversion.GetIntFromString(parts[1], -1);
+
                 if (valueA < 0 || valueB < 0)
                     return false;
             }
             else
             {
                 valueA = Conversion.GetIntFromString(value, -1);
+
                 if (valueA < 0)
                     return false;
             }
 
             return true;
         }
-
         /// <summary>
-        /// Parses conversion profile information for general object rules.
+        /// Parses conversion profile information for general object conversion rules.
         /// </summary>
-        private void ParseConversionRules(string[] ruleStrings, List<ObjectConversionRule> currentRules)
+        /// <param name="ruleStrings">Rules to parse.</param>
+        /// <param name="currentRules">General object conversion rules to replace with parsed rules.</param>
+        private void ParseConversionRules(IEnumerable<string> ruleStrings, List<ObjectConversionRule> currentRules)
         {
-            if (ruleStrings == null || ruleStrings.Length < 1 || currentRules == null)
+            if (ruleStrings == null || !ruleStrings.Any() || currentRules == null)
                 return;
 
             currentRules.Clear();
@@ -740,19 +550,53 @@ namespace MapTool
                 string ruleStringFiltered = GetCoordinateFilters(ruleString, out int coordFilterX, out int coordFilterY);
 
                 string[] values = ruleStringFiltered.Split('|');
+
                 if (values.Length == 1)
-                    currentRules.Add(new ObjectConversionRule(values[0], null, coordFilterX, coordFilterY));
+                {
+                    currentRules.Add(new ObjectConversionRule(GetUpgradeIDs(values[0], out List<string> oldUpgradeIDs), GetUpgradeIDs(null, out List<string> newUpgradeIDs),
+                        oldUpgradeIDs, newUpgradeIDs, coordFilterX, coordFilterY));
+                }
                 else if (values.Length >= 2)
-                    currentRules.Add(new ObjectConversionRule(values[0], values[1], coordFilterX, coordFilterY));
+                {
+                    currentRules.Add(new ObjectConversionRule(GetUpgradeIDs(values[0], out List<string> oldUpgradeIDs), GetUpgradeIDs(values[1], out List<string> newUpgradeIDs),
+                        oldUpgradeIDs, newUpgradeIDs, coordFilterX, coordFilterY));
+                }
             }
         }
 
-        /// <summary>
-        /// Parses conversion profile information for map file section rules.
-        /// </summary>
-        private void ParseConversionRules(string[] ruleStrings, List<SectionConversionRule> currentRules)
+        private string GetUpgradeIDs(string ID, out List<string> upgradeIDs)
         {
-            if (ruleStrings == null || ruleStrings.Length < 1 || currentRules == null)
+            upgradeIDs = new List<string>();
+
+            if (string.IsNullOrEmpty(ID))
+                return null;
+
+            string[] split = ID.Split('+');
+
+            if (split.Length < 2)
+                return ID;
+
+            string[] uIDs = split[1].Split(',');
+
+            foreach (string uID in uIDs)
+            {
+                if (string.IsNullOrEmpty(uID))
+                    continue;
+
+                upgradeIDs.Add(uID.Trim());
+            }
+
+            return split[0].Trim();
+        }
+
+        /// <summary>
+        /// Parses conversion profile information for map INI section conversion rules.
+        /// </summary>
+        /// <param name="ruleStrings">Rules to parse.</param>
+        /// <param name="currentRules">Map INI section conversion rules to replace with parsed rules.</param>
+        private void ParseConversionRules(IEnumerable<string> ruleStrings, List<SectionConversionRule> currentRules)
+        {
+            if (ruleStrings == null || !ruleStrings.Any() || currentRules == null)
                 return;
 
             currentRules.Clear();
@@ -761,6 +605,7 @@ namespace MapTool
             {
                 if (ruleString == null || ruleString.Length < 1)
                     continue;
+
                 string[] values = ruleString.Split('|');
                 string newSection = "";
                 string originalKey = "";
@@ -770,25 +615,33 @@ namespace MapTool
                 {
                     if (values[0].StartsWith("="))
                         values[0] = values[0].Substring(1, values[0].Length - 1);
+
                     string[] sec = values[0].Split('=');
+
                     if (sec == null || sec.Length < 1)
                         continue;
+
                     string originalSection = sec[0];
+
                     if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') &&
                         string.IsNullOrEmpty(sec[1]))
                         newSection = null;
                     else if (sec.Length > 1)
                         newSection = sec[1];
+
                     if (values.Length > 1)
                     {
                         string[] key = values[1].Split('=');
+
                         if (key != null && key.Length > 0)
                         {
                             originalKey = key[0];
+
                             if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') &&
                                 string.IsNullOrEmpty(key[1])) newKey = null;
                             else if (key.Length > 1) newKey = key[1];
                         }
+
                         if (values.Length > 2)
                         {
                             if (!(values[2] == null || values[2] == "" || values[2] == "*"))
@@ -796,21 +649,25 @@ namespace MapTool
                                 if (values[2].Contains("$GETVAL("))
                                 {
                                     string[] valdata = Regex.Match(values[2], @"\$GETVAL\(([^)]*)\)").Groups[1].Value.Split(',');
+
                                     if (valdata.Length > 1)
                                     {
-                                        string newval = mapINI.GetKey(valdata[0], valdata[1], null);
+                                        string newval = map.GetKey(valdata[0], valdata[1], null);
+
                                         if (newval != null)
                                         {
                                             newValue = newval;
+
                                             if (valdata.Length > 3)
                                             {
                                                 bool useDouble = true;
+
                                                 if (valdata.Length > 4)
                                                     useDouble = Conversion.GetBoolFromString(valdata[4], true);
+
                                                 newValue = ApplyArithmeticOp(newValue, valdata[2], valdata[3], useDouble);
                                             }
                                         }
-
                                     }
                                 }
                                 else
@@ -818,6 +675,7 @@ namespace MapTool
                             }
                         }
                     }
+
                     currentRules.Add(new SectionConversionRule(originalSection, newSection, originalKey, newKey, newValue));
                 }
             }
@@ -841,19 +699,21 @@ namespace MapTool
                     case "*":
                         if (!operandAvailable)
                             operandDouble = 1;
-                        valueDouble = valueDouble * operandDouble;
+                        valueDouble *= operandDouble;
                         break;
                     case "/":
                         if (operandDouble == 0)
                             operandDouble = 1;
-                        valueDouble = valueDouble / operandDouble;
+                        valueDouble /= operandDouble;
                         break;
                 }
+
                 if (useDouble)
                     return valueDouble.ToString(CultureInfo.InvariantCulture);
                 else
                     return ((int)valueDouble).ToString();
             }
+
             return value;
         }
 
@@ -874,13 +734,16 @@ namespace MapTool
             {
                 string coordString = ruleStringFiltered.Substring(1, ruleStringFiltered.IndexOf(")") - 1);
                 string[] coords = coordString.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries);
+
                 if (coords.Length >= 2)
                 {
                     coordFilterX = Conversion.GetIntFromString(coords[0].Replace("*", -1 + ""), -1);
                     coordFilterY = Conversion.GetIntFromString(coords[1].Replace("*", -1 + ""), -1);
                 }
+
                 ruleStringFiltered = ruleStringFiltered.ReplaceFirst("(" + coordString + ")", "");
             }
+
             return ruleStringFiltered;
         }
 
@@ -903,11 +766,14 @@ namespace MapTool
 
             Logger.Info("Attempting to modify theater data of the map file.");
 
-            if (IsValidTheaterName(newTheater))
+            string theater = map.Theater;
+
+            if (newTheater.ToUpper() != theater)
             {
-                mapINI.SetKey("Map", "Theater", newTheater);
-                Logger.Info("Map theater declaration changed from '" + mapTheater + "' to '" + newTheater + "'.");
-                MapAltered = true;
+                map.Theater = newTheater;
+
+                if (map.Theater != theater)
+                    Logger.Info("Map theater declaration changed from '" + map.Theater + "' to '" + newTheater.ToUpper() + "'.");
             }
         }
 
@@ -916,36 +782,26 @@ namespace MapTool
         /// </summary>
         public void ConvertTileData()
         {
-            if (!Initialized)
+            if (!Initialized || !map.HasTileData)
                 return;
 
-            if (tileRules.Count > 0 || removeLevel0ClearTiles || isoMapPack5SortBy != IsoMapPack5SortMode.NotDefined)
+            if (tileRules.Count < 1 && removeLevel0ClearTiles && isoMapPack5SortBy == IsoMapPack5SortMode.NotDefined)
+                return;
+
+            if (map.FullWidth < 1 || map.FullHeight < 1)
             {
-                string errorMessage = ParseMapPack();
-                if (errorMessage != null)
-                {
-                    Logger.Error("Error encountered parsing tile data: Message: " + errorMessage);
-                    return;
-                }
-            }
-
-            if (isoMapPack5.Count < 1)
+                Logger.Error("Could not alter tile data because map size is invalid.");
                 return;
-
+            }
             else if (!IsCurrentTheaterAllowed())
             {
                 Logger.Warn("Skipping altering tile data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
             }
 
-            bool tileDataAltered = ApplyTileConversionRules();
-            tileDataAltered |= RemoveLevel0ClearTiles() || tileDataAltered;
-            tileDataAltered |= SortIsoMapPack() || tileDataAltered;
-
-            if (tileDataAltered)
-                SaveMapPack();
-
-            MapAltered |= tileDataAltered;
+            ApplyTileConversionRules();
+            RemoveLevel0ClearTiles();
+            SortIsoMapPack();
         }
 
         /// <summary>
@@ -957,25 +813,28 @@ namespace MapTool
             if (tileRules == null || tileRules.Count < 1)
                 return false;
 
+            bool tileDataChanged = false;
+
             Logger.Info("Attempting to apply TileRules on map tile data.");
 
             int originalOffset = 0, newOffset = 0;
-            bool tileDataAltered = false;
 
-            if (theaterTileOffsets.ContainsKey(mapTheater.ToUpper()))
+            if (theaterTileOffsets.ContainsKey(map.Theater))
             {
-                originalOffset = theaterTileOffsets[mapTheater.ToUpper()].Item1;
-                newOffset = theaterTileOffsets[mapTheater.ToUpper()].Item2;
+                originalOffset = theaterTileOffsets[map.Theater].Item1;
+                newOffset = theaterTileOffsets[map.Theater].Item2;
+
                 if (newOffset == int.MinValue)
                     newOffset = originalOffset;
+
                 if (originalOffset != 0 && newOffset != 0)
-                    Logger.Info("Global tile rule offsets for theater " + mapTheater.ToUpper() + ": " + originalOffset + " (original), " + newOffset + " (new)");
+                    Logger.Info("Global tile rule offsets for theater " + map.Theater + ": " + originalOffset + " (original), " + newOffset + " (new)");
             }
 
-            foreach (MapTile tile in isoMapPack5)
+            foreach (MapTile tile in map.GetMapTiles())
             {
-                if (tile.TileIndex < 0 || tile.TileIndex == 65535)
-                    tile.TileIndex = 0;
+                if (!tile.IsValid)
+                    continue;
 
                 foreach (TileConversionRule rule in tileRules)
                 {
@@ -990,66 +849,88 @@ namespace MapTool
 
                     if (tile.TileIndex >= ruleOriginalStartIndex && tile.TileIndex <= ruleOriginalEndIndex)
                     {
+                        if (rule.OriginalSubStartIndex != -1 && rule.OriginalSubEndIndex != -1 &&
+                            tile.SubTileIndex < rule.OriginalSubStartIndex || tile.SubTileIndex > rule.OriginalSubEndIndex)
+                            continue;
+
                         if (rule.HeightOverride > -1)
                         {
                             byte height = (byte)Math.Min(rule.HeightOverride, 14);
                             if (tile.Level != height)
                             {
-                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + "  - height changed from " + tile.Level + " to " + height + ".");
+                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + "  - height changed from " + tile.Level + " to " + height + ".");
                                 tile.Level = height;
+                                tileDataChanged = true;
                             }
                         }
+
                         if (rule.SubIndexOverride > -1)
                         {
                             byte subtileIndex = (byte)Math.Min(rule.SubIndexOverride, 255);
                             if (tile.SubTileIndex != subtileIndex)
                             {
-                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + " - sub tile index changed from " + tile.SubTileIndex + " to " + subtileIndex + ".");
+                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - sub tile index changed from " + tile.SubTileIndex + " to " + subtileIndex + ".");
                                 tile.SubTileIndex = subtileIndex;
+                                tileDataChanged = true;
                             }
                         }
+
                         if (rule.IceGrowthOverride > -1)
                         {
                             byte iceGrowth = Convert.ToByte(Convert.ToBoolean(rule.IceGrowthOverride));
                             if (tile.IceGrowth != iceGrowth)
                             {
-                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + " - ice growth flag changed from " + tile.IceGrowth + " to " + iceGrowth + ".");
+                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - ice growth flag changed from " + tile.IceGrowth + " to " + iceGrowth + ".");
                                 tile.IceGrowth = iceGrowth;
+                                tileDataChanged = true;
                             }
                         }
 
+                        int newTileIndex = 0;
+
                         if (rule.IsRandomizer)
                         {
-                            int newindex = random.Next(ruleNewStartIndex, ruleNewEndIndex);
-                            Logger.Debug("TileRules: Tile rule random range: [" + ruleNewStartIndex + "-" + ruleNewEndIndex + "]. Picked: " + newindex);
-                            if (newindex != tile.TileIndex)
-                            {
-                                Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y:" + tile.Y + " - index changed to " + newindex);
-                                tile.TileIndex = newindex;
-                                tileDataAltered = true;
-                            }
-                            break;
+                            newTileIndex = random.Next(ruleNewStartIndex, ruleNewEndIndex);
+                            Logger.Debug("TileRules: Tile rule random range: [" + ruleNewStartIndex + "-" + ruleNewEndIndex + "]. Picked: " + newTileIndex);
                         }
                         else if (ruleNewEndIndex == ruleNewStartIndex)
-                        {
-                            Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X: " + tile.X + ", Y: " + tile.Y + " - index changed to " + ruleNewStartIndex);
-                            tile.TileIndex = ruleNewStartIndex;
-                            tileDataAltered = true;
-                            break;
-                        }
+                            newTileIndex = ruleNewStartIndex;
                         else
+                            newTileIndex = ruleNewStartIndex + Math.Abs(ruleOriginalStartIndex - tile.TileIndex);
+
+                        if (newTileIndex != tile.TileIndex)
                         {
-                            Logger.Debug("TileRules: Tile ID " + tile.TileIndex + " at X: " + tile.X + ", Y: " + tile.Y + " - index changed to " +
-                                (ruleNewStartIndex + Math.Abs(ruleOriginalStartIndex - tile.TileIndex)));
-                            tile.TileIndex = ruleNewStartIndex + Math.Abs(ruleOriginalStartIndex - tile.TileIndex);
-                            tileDataAltered = true;
-                            break;
+                            Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - index changed to " + newTileIndex);
+                            tile.TileIndex = newTileIndex;
+                            tileDataChanged = true;
+                        }
+
+                        if (rule.SubIndexOverride < 0 && rule.NewSubStartIndex >= 0 && rule.NewSubEndIndex >= 0)
+                        {
+                            byte newSubTileIndex = 0;
+
+                            if (rule.IsSubRandomizer)
+                            {
+                                newSubTileIndex = (byte)random.Next(rule.NewSubStartIndex, rule.NewSubEndIndex);
+                                Logger.Debug("TileRules: Tile rule sub-tile random range: [" + rule.NewSubStartIndex + "-" + rule.NewSubEndIndex + "]. Picked: " + newSubTileIndex);
+                            }
+                            else if (rule.NewSubEndIndex == rule.NewSubStartIndex)
+                                newSubTileIndex = (byte)rule.NewSubStartIndex;
+                            else
+                                newSubTileIndex = (byte)(rule.NewSubStartIndex + Math.Abs(rule.OriginalSubStartIndex - tile.SubTileIndex));
+
+                            if (newSubTileIndex != tile.SubTileIndex)
+                            {
+                                Logger.Debug("TileRules: Tile sub-tile index " + tile.SubTileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - index changed to " + newSubTileIndex);
+                                tile.SubTileIndex = newSubTileIndex;
+                                tileDataChanged = true;
+                            }
                         }
                     }
                 }
             }
 
-            return tileDataAltered;
+            return tileDataChanged;
         }
 
         /// <summary>
@@ -1065,15 +946,13 @@ namespace MapTool
 
             List<MapTile> removeTiles = new List<MapTile>();
 
-            foreach (MapTile tile in isoMapPack5)
+            foreach (MapTile tile in map.GetMapTiles())
             {
                 if (tile.TileIndex < 1 && tile.Level < 1 && tile.SubTileIndex < 1 && tile.IceGrowth < 1)
                     removeTiles.Add(tile);
             }
 
-            int removeCount = isoMapPack5.RemoveAll(x => removeTiles.Contains(x));
-
-            return removeCount > 0;
+            return map.RemoveMapTiles(removeTiles) > 0;
         }
 
         /// <summary>
@@ -1082,47 +961,62 @@ namespace MapTool
         /// <returns>Returns true if tile data was changed, false if not.</returns>
         private bool SortIsoMapPack()
         {
-            if (!Initialized || isoMapPack5.Count < 1 || isoMapPack5SortBy == IsoMapPack5SortMode.NotDefined)
+            if (!Initialized || !map.HasTileData || isoMapPack5SortBy == IsoMapPack5SortMode.NotDefined)
                 return false;
 
             Logger.Info("IsoMapPack5SortBy set: IsoMapPack5 data will be sorted using sorting mode: " + isoMapPack5SortBy);
+
+            List<PropertyInfo> propertyInfos = new List<PropertyInfo>();
+
             switch (isoMapPack5SortBy)
             {
                 case IsoMapPack5SortMode.XLevelTileIndex:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.X).ThenBy(x => x.Level).ThenBy(x => x.TileIndex).ToList();
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.X)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.X)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.Level)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.TileIndex)));
                     break;
                 case IsoMapPack5SortMode.XTileIndexLevel:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.X).ThenBy(x => x.TileIndex).ThenBy(x => x.Level).ToList();
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.X)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.TileIndex)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.Level)));
                     break;
                 case IsoMapPack5SortMode.TileIndexXLevel:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.TileIndex).ThenBy(x => x.X).ThenBy(x => x.Level).ToList();
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.TileIndex)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.X)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.Level)));
                     break;
                 case IsoMapPack5SortMode.LevelXTileIndex:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.Level).ThenBy(x => x.X).ThenBy(x => x.TileIndex).ToList();
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.Level)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.X)));
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.TileIndex)));
                     break;
                 case IsoMapPack5SortMode.X:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.X).ToList();
-                    break;
-                case IsoMapPack5SortMode.Level:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.Level).ToList();
-                    break;
-                case IsoMapPack5SortMode.TileIndex:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.TileIndex).ToList();
-                    break;
-                case IsoMapPack5SortMode.SubTileIndex:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.SubTileIndex).ToList();
-                    break;
-                case IsoMapPack5SortMode.IceGrowth:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.IceGrowth).ToList();
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.X)));
                     break;
                 case IsoMapPack5SortMode.Y:
-                    isoMapPack5 = isoMapPack5.OrderBy(x => x.Y).ToList();
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.Y)));
+                    break;
+                case IsoMapPack5SortMode.TileIndex:
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.TileIndex)));
+                    break;
+                case IsoMapPack5SortMode.SubTileIndex:
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.SubTileIndex)));
+                    break;
+                case IsoMapPack5SortMode.Level:
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.Level)));
+                    break;
+                case IsoMapPack5SortMode.IceGrowth:
+                    propertyInfos.Add(typeof(MapTile).GetProperty(nameof(MapTile.IceGrowth)));
                     break;
                 default:
-                    return false;
+                    break;
             }
 
-            return true;
+            if (propertyInfos.Count > 0)
+                return map.SortMapTileDataByProperties(propertyInfos);
+
+            return false;
         }
 
         /// <summary>
@@ -1130,7 +1024,7 @@ namespace MapTool
         /// </summary>
         public void ConvertOverlayData()
         {
-            if (!Initialized || overlayRules == null || overlayRules.Count < 1)
+            if (!Initialized || !map.HasOverlayData || overlayRules == null || overlayRules.Count < 1)
                 return;
 
             else if (!IsCurrentTheaterAllowed())
@@ -1139,14 +1033,7 @@ namespace MapTool
                 return;
             }
 
-            ParseOverlayPacks();
-
-            bool overlayDataAltered = ApplyOverlayConversionRules();
-
-            if (overlayDataAltered)
-                SaveOverlayPacks();
-
-            MapAltered |= overlayDataAltered;
+            ApplyOverlayConversionRules();
         }
 
         /// <summary>
@@ -1159,35 +1046,31 @@ namespace MapTool
 
             bool overlayDataChanged = false;
 
-            for (int i = 0; i < OVERLAY_DATA_LENGTH; i++)
-            {
-                /*
-                if (overlayPack[i] == 255)
-                {
-                    overlayDataPack[i] = 0;
-                    continue;
-                }*/
-                if (overlayPack[i] < 0 || overlayPack[i] > 255)
-                    overlayPack[i] = 255;
-                if (overlayDataPack[i] < 0 || overlayDataPack[i] > 255)
-                    overlayDataPack[i] = 0;
+            MapOverlay[] overlays = map.GetMapOverlays();
 
-                int x = i % 512;
-                int y = (i - x) / 512;
+            for (int i = 0; i < overlays.Length; i++)
+            {
+                MapOverlay overlay = overlays[i];
+
+                if (overlay.Index < 0 || overlay.Index > 255)
+                    overlay.Index = 255;
+
+                if (overlay.FrameIndex < 0 || overlay.FrameIndex > 255)
+                    overlay.FrameIndex = 0;
 
                 foreach (OverlayConversionRule rule in overlayRules)
                 {
                     if (!rule.IsValid)
                         continue;
 
-                    if (rule.CoordinateFilterX > -1 && rule.CoordinateFilterX != x ||
-                        rule.CoordinateFilterY > -1 && rule.CoordinateFilterY != y)
+                    if (rule.CoordinateFilterX > -1 && rule.CoordinateFilterX != overlay.X ||
+                        rule.CoordinateFilterY > -1 && rule.CoordinateFilterY != overlay.Y)
                         continue;
 
-                    bool overlayPackChanged = ChangeOverlayData(overlayPack, i, x, y, rule.OriginalStartIndex, rule.OriginalEndIndex,
+                    bool overlayPackChanged = ChangeOverlayData(overlay, i, rule.OriginalStartIndex, rule.OriginalEndIndex,
                         rule.NewStartIndex, rule.NewEndIndex, rule.IsRandomizer, false);
 
-                    bool overlayDataPackChanged = ChangeOverlayData(overlayDataPack, i, x, y, rule.OriginalStartFrameIndex, rule.OriginalEndFrameIndex,
+                    bool overlayDataPackChanged = ChangeOverlayData(overlay, i, rule.OriginalStartFrameIndex, rule.OriginalEndFrameIndex,
                         rule.NewStartFrameIndex, rule.NewEndFrameIndex, rule.IsFrameRandomizer, true);
 
                     if (overlayPackChanged || overlayDataPackChanged)
@@ -1197,16 +1080,15 @@ namespace MapTool
                     }
                 }
             }
+
             return overlayDataChanged;
         }
 
         /// <summary>
-        /// Changes overlay data.
+        /// Changes map overlay data.
         /// </summary>
-        /// <param name="data">Data collection to change.</param>
-        /// <param name="index">Overlay index in the data collection.</param>
-        /// <param name="x">Overlay X coordinate.</param>
-        /// <param name="y">Overlay Y coordinate.</param>
+        /// <param name="overlay">Map overlay.</param>
+        /// <param name="index">Map overlay index.</param>
         /// <param name="originalStartIndex">Original start index.</param>
         /// <param name="originalEndIndex">Original end index.</param>
         /// <param name="newStartIndex">New start index.</param>
@@ -1214,38 +1096,58 @@ namespace MapTool
         /// <param name="useRandomRange">If true, use a random range.</param>
         /// <param name="changeFrameData">If true, treat changes as being made to frame data rather than overlay ID data.</param>
         /// <returns>Returns true if overlay data was changed, false if not.</returns>
-        private bool ChangeOverlayData(byte[] data, int index, int x, int y, int originalStartIndex, int originalEndIndex,
+        private bool ChangeOverlayData(MapOverlay overlay, int index, int originalStartIndex, int originalEndIndex,
             int newStartIndex, int newEndIndex, bool useRandomRange, bool changeFrameData)
         {
             string dataType = changeFrameData ? "frame" : "ID";
-            if (data[index] >= originalStartIndex && data[index] <= originalEndIndex)
+            int x = overlay.X;
+            int y = overlay.Y;
+            byte data = changeFrameData ? overlay.FrameIndex : overlay.Index;
+
+            if (data >= originalStartIndex && data <= originalEndIndex)
             {
                 if (useRandomRange)
                 {
-                    byte newindex = (byte)random.Next(newStartIndex, newEndIndex);
-                    Logger.Debug("OverlayRules: Random " + dataType + " range [" + newStartIndex + "-" + newEndIndex + "]. Picked: " + newindex);
-                    if (newindex != data[index])
+                    byte newIndex = (byte)random.Next(newStartIndex, newEndIndex);
+                    Logger.Debug("OverlayRules: Random " + dataType + " range [" + newStartIndex + "-" + newEndIndex + "]. Picked: " + newIndex);
+                    if (newIndex != data)
                     {
-                        Logger.Debug("OverlayRules: Overlay " + dataType + " " + data[index] + " at array slot " + index + " (X: " + x + ", Y: " + y + ") changed to " +
-                            newindex + ".");
-                        data[index] = newindex;
+                        Logger.Debug("OverlayRules: Overlay " + dataType + " " + data + " at array slot " + index + " (X:" + x + ", Y:" + y + ") changed to " +
+                            newIndex + ".");
+
+                        if (changeFrameData)
+                            overlay.FrameIndex = newIndex;
+                        else
+                            overlay.Index = newIndex;
+
                         return true;
                     }
                 }
                 else if (newEndIndex == newStartIndex)
                 {
-                    Logger.Debug("OverlayRules: Overlay " + dataType + " " + data[index] + " at array slot " + index + " (X: " + x + ", Y: " + y + ") changed to " +
+                    Logger.Debug("OverlayRules: Overlay " + dataType + " " + data + " at array slot " + index + " (X:" + x + ", Y:" + y + ") changed to " +
                         newStartIndex + ".");
-                    data[index] = (byte)newStartIndex;
+
+                    if (changeFrameData)
+                        overlay.FrameIndex = (byte)newStartIndex;
+                    else
+                        overlay.Index = (byte)newStartIndex;
+
                     return true;
                 }
                 else
                 {
-                    Logger.Debug("OverlayRules: Overlay " + dataType + " " + data[index] + " at array slot " + index + " (X: " + x + ", Y: " + y + ") changed to " +
-                        (newStartIndex + Math.Abs(originalStartIndex - data[index])) + ".");
-                    data[index] = (byte)(newStartIndex + Math.Abs(originalStartIndex - data[index]));
+                    Logger.Debug("OverlayRules: Overlay " + dataType + " " + data + " at array slot " + index + " (X:" + x + ", Y:" + y + ") changed to " +
+                        (newStartIndex + Math.Abs(originalStartIndex - data)) + ".");
+
+                    if (changeFrameData)
+                        overlay.FrameIndex = (byte)(newStartIndex + Math.Abs(originalStartIndex - data));
+                    else
+                        overlay.Index = (byte)(newStartIndex + Math.Abs(originalStartIndex - data));
+
                     return true;
                 }
+
                 return false;
             }
             else
@@ -1257,12 +1159,14 @@ namespace MapTool
         /// </summary>
         public void ConvertObjectData()
         {
-            if (!Initialized || overlayRules == null || objectRules.Count < 1) return;
-            else if (mapTheater != null && applicableTheaters != null && !applicableTheaters.Contains(mapTheater))
+            if (!Initialized || overlayRules == null || objectRules.Count < 1)
+                return;
+            else if (map.Theater != null && applicableTheaters != null && !applicableTheaters.Contains(map.Theater))
             {
                 Logger.Warn("Conversion profile not applicable to maps belonging to this theater. No alterations will be made to the object data.");
                 return;
             }
+
             Logger.Info("Attempting to modify object data of the map file.");
             ApplyObjectConversionRules("Aircraft");
             ApplyObjectConversionRules("Units");
@@ -1277,39 +1181,108 @@ namespace MapTool
         /// <param name="sectionName">ID of the object list section to apply the rules to.</param>
         private void ApplyObjectConversionRules(string sectionName)
         {
-            if (string.IsNullOrEmpty(sectionName)) return;
-            KeyValuePair<string, string>[] kvps = mapINI.GetKeyValuePairs(sectionName);
-            if (kvps == null) return;
-            foreach (KeyValuePair<string, string> kvp in kvps)
+            Dictionary<string, MapObject> objects = map.GetMapObjectsFromSection(sectionName);
+
+            foreach (KeyValuePair<string, MapObject> kvp in objects)
             {
+                MapObject obj = kvp.Value;
+
                 foreach (ObjectConversionRule rule in objectRules)
                 {
                     if (rule == null || rule.OriginalName == null)
                         continue;
 
-                    GetObjectCoordinates(kvp, sectionName, out int x, out int y);
-
-                    if (rule.CoordinateFilterX > -1 && rule.CoordinateFilterX != x ||
-                        rule.CoordinateFilterY > -1 && rule.CoordinateFilterY != y)
+                    if (rule.CoordinateFilterX > -1 && rule.CoordinateFilterX != obj.X ||
+                        rule.CoordinateFilterY > -1 && rule.CoordinateFilterY != obj.Y)
                         continue;
 
-                    if (CheckIfObjectIDMatches(kvp.Value, rule.OriginalName))
+                    if (obj.ID == rule.OriginalName)
                     {
+                        HandleUpgrades(obj, rule, out bool skipObject,
+                            out string[] oldUpgrades, out string[] newUpgrades, out int oldUpgradeCount, out int newUpgradeCount);
+
+                        if (skipObject)
+                            continue;
+
+                        string upgradesOld = oldUpgradeCount > 0 ? " (/w upgrades: '" + string.Join(",", oldUpgrades) + "')" : string.Empty;
+                        string upgradesNew = newUpgradeCount > 0 ? " (/w upgrades: '" + string.Join(",", newUpgrades) + "')" : string.Empty;
+
                         if (rule.NewName == null)
                         {
-                            Logger.Debug("ObjectRules: Removed " + sectionName + " object with ID '" + rule.OriginalName + "' (X: " + x + ", Y: " + y + ") from the map file.");
-                            mapINI.RemoveKey(sectionName, kvp.Key);
-                            MapAltered = true;
+                            Logger.Debug("ObjectRules: Removed " + sectionName + " object with ID '" + rule.OriginalName + "'" + upgradesOld + "(X:" + obj.X + ", Y:" + obj.Y + ") from the map file.");
+                            map.RemoveKey(sectionName, kvp.Key);
                         }
                         else
                         {
-                            Logger.Debug("ObjectRules: Replaced " + sectionName + " object with ID '" + rule.OriginalName + "' (X: " + x + ", Y: " + y + ") with object of ID '" + rule.NewName + "'.");
-                            mapINI.SetKey(sectionName, kvp.Key, kvp.Value.Replace(rule.OriginalName, rule.NewName));
-                            MapAltered = true;
+                            Logger.Debug("ObjectRules: Replaced " + sectionName + " object with ID '" + rule.OriginalName + "'" + upgradesOld + " (X:" + obj.X + ", Y:" + obj.Y + ") with object of ID '" + rule.NewName + "'" + upgradesNew + ".");
+                            obj.ID = rule.NewName;
+                            map.SetKey(sectionName, kvp.Key, obj.GetINICode());
                         }
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Handles map object upgrades.
+        /// </summary>
+        /// <param name="mapObject">Map object.</param>
+        /// <param name="rule">Object conversion rule.</param>
+        /// <param name="skipObject">Set to true if object conversion should be skipped.</param>
+        /// <param name="oldUpgrades">Set to list of upgrades currently on the object.</param>
+        /// <param name="newUpgrades">Set to list of upgrades that will be on the object after conversion.</param>
+        /// <param name="oldUpgradeCount">Set to number of upgrades (excluding empty upgrade slots) currently on the object.</param>
+        /// <param name="newUpgradeCount">Set to number of upgrades (excluding empty upgrade slots, unless <paramref name="oldUpgradeCount"/> is larger than zero) that will be on the object after conversion.</param>
+        private void HandleUpgrades(MapObject mapObject, ObjectConversionRule rule, out bool skipObject, out string[] oldUpgrades, out string[] newUpgrades, out int oldUpgradeCount, out int newUpgradeCount)
+        {
+            oldUpgrades = new string[3] { "None", "None", "None" };
+            newUpgrades = new string[3] { "None", "None", "None" };
+            skipObject = false;
+            oldUpgradeCount = 0;
+            newUpgradeCount = 0;
+
+            if (mapObject == null || !(mapObject is MapBuildingObject))
+                return;
+
+            MapBuildingObject building = mapObject as MapBuildingObject;
+
+            for (int i = 0; i < oldUpgrades.Length; i++)
+            {
+                string ruleUpgrade = rule.OriginalUpgrades[i];
+
+                if (string.IsNullOrEmpty(ruleUpgrade))
+                    continue;
+
+                string buildingUpgrade = building.Upgrades[i];
+
+                if (!ruleUpgrade.Equals("*", StringComparison.InvariantCulture) && !ruleUpgrade.Equals(buildingUpgrade))
+                {
+                    skipObject = true;
+                    return;
+                }
+
+                if (!buildingUpgrade.Equals("None", StringComparison.InvariantCulture))
+                    oldUpgradeCount++;
+
+                oldUpgrades[i] = buildingUpgrade;
+            }
+
+            for (int i = 0; i < newUpgrades.Length; i++)
+            {
+                string ruleUpgrade = i < rule.NewUpgrades.Length ? rule.NewUpgrades[i] : null;
+                string upgrade = building.Upgrades[i];
+
+                if (!string.IsNullOrEmpty(ruleUpgrade) && !ruleUpgrade.Equals("*", StringComparison.InvariantCulture))
+                    upgrade = ruleUpgrade;
+
+                if (oldUpgradeCount > 0 || !building.Upgrades[i].Equals("None", StringComparison.InvariantCulture))
+                    newUpgradeCount++;
+
+                newUpgrades[i] = upgrade;
+            }
+
+            if (newUpgradeCount > 0)
+                building.SetUpgrades(newUpgrades);
         }
 
         /// <summary>
@@ -1321,27 +1294,7 @@ namespace MapTool
             DeleteObjectsOutsideBoundsFromSection("Infantry");
             DeleteObjectsOutsideBoundsFromSection("Units");
             DeleteObjectsOutsideBoundsFromSection("Structures");
-
-            string[] keys = mapINI.GetKeys("Terrain");
-            if (keys == null)
-                return;
-
-            foreach (string key in keys)
-            {
-                int coord = Conversion.GetIntFromString(key, -1);
-                if (coord < 0)
-                    continue;
-                int x = coord % 1000;
-                int y = (coord - x) / 1000;
-
-                if (!CoordinateExistsOnMap(x, y))
-                {
-                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed Terrain object " + mapINI.GetKey("Terrain", key, "") +
-                        " (key: " + key + ") from cell " + x + "," + y + ".");
-                    mapINI.RemoveKey("Terrain", key);
-                    MapAltered = true;
-                }
-            }
+            DeleteObjectsOutsideBoundsFromSection("Terrain");
         }
 
         /// <summary>
@@ -1350,24 +1303,17 @@ namespace MapTool
         /// <param name="sectionName"></param>
         private void DeleteObjectsOutsideBoundsFromSection(string sectionName)
         {
-            string[] keys = mapINI.GetKeys(sectionName);
-            if (keys == null) return;
-            foreach (string key in keys)
+            Dictionary<string, MapObject> objects = map.GetMapObjectsFromSection(sectionName);
+
+            foreach (KeyValuePair<string, MapObject> kvp in objects)
             {
-                string[] tmp = mapINI.GetKey(sectionName, key, "").Split(',');
-                if (tmp.Length < 5)
-                    continue;
-                int x = Conversion.GetIntFromString(tmp[3], -1);
-                int y = Conversion.GetIntFromString(tmp[4], -1);
-                if (x < 0 || y < 0)
-                    continue;
-                if (!CoordinateExistsOnMap(x, y))
+                MapObject mapObject = kvp.Value;
+
+                if (!map.CoordinateExistsOnMap(mapObject.X, mapObject.Y))
                 {
-                    string[] values = mapINI.GetKey(sectionName, key, "").Split(',');
-                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed " + sectionName + " object " + (values.Length > 1 ? values[1] : "???") +
-                        " (key: " + key + ") from cell " + x + "," + y + ".");
-                    mapINI.RemoveKey(sectionName, key);
-                    MapAltered = true;
+                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed " + sectionName + " object " + mapObject.ID +
+                        " (key: " + kvp.Key + ") from cell " + mapObject.X + "," + mapObject.Y + ".");
+                    map.RemoveKey(sectionName, kvp.Key);
                 }
             }
         }
@@ -1377,36 +1323,19 @@ namespace MapTool
         /// </summary>
         private void DeleteOverlaysOutsideBounds()
         {
-            if (overlayPack == null || overlayDataPack == null)
+            MapOverlay[] overlays = map.GetMapOverlays();
+
+            for (int i = 0; i < overlays.Length; i++)
             {
-                ParseOverlayPacks();
-            }
-
-            if (overlayPack == null || overlayDataPack == null)
-                return;
-
-            bool overlayDataAltered = false;
-
-            for (int i = 0; i < overlayPack.Length; i++)
-            {
-                if (overlayPack[i] == 255)
+                if (overlays[i].Index == 255)
                     continue;
-                int x = i % 512;
-                int y = (i - x) / 512;
 
-                if (!CoordinateExistsOnMap(x, y))
+                if (!map.CoordinateExistsOnMap(overlays[i].X, overlays[i].Y))
                 {
-                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed overlay (index: " + overlayPack[i] + ") from cell " + x + "," + y + ".");
-                    overlayPack[i] = 255;
-                    overlayDataPack[i] = 0;
-                    overlayDataAltered = true;
+                    Logger.Debug("DeleteObjectsOutsideMapBounds: Removed overlay (index: " + overlays[i].Index + ") from cell " + overlays[i].X + "," + overlays[i].Y + ".");
+                    map.RemoveMapOverlay(overlays[i]);
                 }
             }
-
-            if (overlayDataAltered)
-                SaveOverlayPacks();
-
-            MapAltered |= overlayDataAltered;
         }
 
         /// <summary>
@@ -1416,7 +1345,7 @@ namespace MapTool
         /// </summary>
         private void FixTubesSection()
         {
-            string[] keys = mapINI.GetKeys("Tubes");
+            string[] keys = map.GetKeys("Tubes");
 
             if (keys == null)
                 return;
@@ -1424,7 +1353,7 @@ namespace MapTool
             int counter = 0;
             foreach (string key in keys)
             {
-                List<string> values = mapINI.GetKey("Tubes", key, string.Empty).Split(',').ToList();
+                List<string> values = map.GetKey("Tubes", key, string.Empty).Split(',').ToList();
 
                 int index = values.FindIndex(str => str == "-1");
 
@@ -1439,8 +1368,7 @@ namespace MapTool
                 }
                 else
                     values.RemoveRange(index + 1, values.Count - (index + 1));
-                mapINI.SetKey("Tubes", key, string.Join(",", values));
-                MapAltered = true;
+                map.SetKey("Tubes", key, string.Join(",", values));
                 counter++;
             }
         }
@@ -1450,12 +1378,14 @@ namespace MapTool
         /// </summary>
         public void ConvertSectionData()
         {
-            if (!Initialized || sectionRules == null || sectionRules.Count < 1) return;
+            if (!Initialized || sectionRules == null || sectionRules.Count < 1)
+                return;
             else if (!IsCurrentTheaterAllowed())
             {
                 Logger.Warn("Skipping altering section data - ApplicableTheaters does not contain entry matching map theater.");
                 return;
             }
+
             Logger.Info("Attempting to modify section data of the map file.");
             ApplySectionConversionRules();
         }
@@ -1471,58 +1401,57 @@ namespace MapTool
                     continue;
 
                 string currentSection = rule.OriginalSection;
+
                 if (rule.NewSection == null)
                 {
                     Logger.Debug("SectionRules: Removed section '" + rule.OriginalSection + "'.");
-                    mapINI.RemoveSection(rule.OriginalSection);
-                    MapAltered = true;
+                    map.RemoveSection(rule.OriginalSection);
                     continue;
                 }
                 else if (rule.NewSection != "")
                 {
-                    if (!mapINI.SectionExists(rule.OriginalSection))
+                    if (!map.SectionExists(rule.OriginalSection))
                     {
                         Logger.Debug("SectionRules: Added new section '" + rule.NewSection + "'.");
-                        mapINI.AddSection(rule.NewSection);
+                        map.AddSection(rule.NewSection);
                     }
                     else
                     {
                         Logger.Debug("SectionRules: Renamed section '" + rule.OriginalSection + "' to '" + rule.NewSection + "'.");
-                        mapINI.RenameSection(rule.OriginalSection, rule.NewSection);
+                        map.RenameSection(rule.OriginalSection, rule.NewSection);
                     }
-                    MapAltered = true;
+
                     currentSection = rule.NewSection;
                 }
 
                 string currentKey = rule.OriginalKey;
+
                 if (rule.NewKey == null)
                 {
                     Logger.Debug("SectionRules: Removed key '" + rule.OriginalKey + "' from section '" + currentSection + "'.");
-                    mapINI.RemoveKey(currentSection, rule.OriginalKey);
-                    MapAltered = true;
+                    map.RemoveKey(currentSection, rule.OriginalKey);
                     continue;
                 }
                 else if (rule.NewKey != "")
                 {
-                    if (mapINI.GetKey(currentSection, rule.OriginalKey, null) == null)
+                    if (map.GetKey(currentSection, rule.OriginalKey, null) == null)
                     {
                         Logger.Debug("SectionRules: Added a new key '" + rule.NewKey + "' to section '" + currentSection + "'.");
-                        mapINI.SetKey(currentSection, rule.NewKey, "");
+                        map.SetKey(currentSection, rule.NewKey, "");
                     }
                     else
                     {
                         Logger.Debug("SectionRules: Renamed key '" + rule.OriginalKey + "' in section '" + currentSection + "' to '" + rule.NewKey + "'.");
-                        mapINI.RenameKey(currentSection, rule.OriginalKey, rule.NewKey);
+                        map.RenameKey(currentSection, rule.OriginalKey, rule.NewKey);
                     }
-                    MapAltered = true;
+
                     currentKey = rule.NewKey;
                 }
 
                 if (rule.NewValue != "")
                 {
                     Logger.Debug("SectionRules: Section '" + currentSection + "' key '" + currentKey + "' value changed to '" + rule.NewValue + "'.");
-                    mapINI.SetKey(currentSection, currentKey, rule.NewValue);
-                    MapAltered = true;
+                    map.SetKey(currentSection, currentKey, rule.NewValue);
                 }
             }
         }
@@ -1530,95 +1459,6 @@ namespace MapTool
         #endregion
 
         #region helpers
-
-        /// <summary>
-        /// Checks if map object declaration matches with specific object ID.
-        /// </summary>
-        /// <param name="objectDeclaration">Object declaration from map file.</param>
-        /// <param name="objectID">Object ID.</param>
-        /// <returns>True if a match, otherwise false.</returns>
-        private bool CheckIfObjectIDMatches(string objectDeclaration, string objectID)
-        {
-            if (objectDeclaration.Equals(objectID))
-                return true;
-            string[] sp = objectDeclaration.Split(',');
-            if (sp.Length < 2)
-                return false;
-            if (sp[1].Equals(objectID))
-                return true;
-            return false;
-        }
-
-        /// <summary>
-        /// Gets coordinates of a map object.
-        /// </summary>
-        /// <param name="kvp">Object declaration key & value.</param>
-        /// <param name="sectionName">Map object section name.</param>
-        /// <param name="x">Will be set to map tile x coordinate of the object.</param>
-        /// <param name="y">Will be set to map tile y coordinate of the object.</param>
-        private void GetObjectCoordinates(KeyValuePair<string, string> kvp, string sectionName, out int x, out int y)
-        {
-            x = -1;
-            y = -1;
-
-            if (sectionName.Equals("Terrain"))
-            {
-                int coord = Conversion.GetIntFromString(kvp.Key, -1);
-                if (coord < 0)
-                    return;
-                x = coord % 1000;
-                y = (coord - x) / 1000;
-            }
-            else
-            {
-                string[] sp = kvp.Value.Split(',');
-                if (sp.Length < 5)
-                    return;
-                x = Conversion.GetIntFromString(sp[3], -1);
-                y = Conversion.GetIntFromString(sp[4], -1);
-            }
-        }
-
-        /// <summary>
-        /// Checks if location with given coordinates exists within map bounds.
-        /// </summary>
-        /// <param name="x">Location X coordinate.</param>
-        /// <param name="y">Location Y coordinate.</param>
-        /// <returns>True if location exists, false if not.</returns>
-        private bool CoordinateExistsOnMap(int x, int y)
-        {
-            if (!Initialized || coordinateValidityLUT == null ||
-                coordinateValidityLUT.GetLength(0) <= x || coordinateValidityLUT.GetLength(1) <= y)
-                return false;
-
-            return coordinateValidityLUT[x, y];
-        }
-
-        /// <summary>
-        /// Calculates valid map coordinates from map width & height and creates a look-up table from them.
-        /// </summary>
-        private void CalculateCoordinateValidity()
-        {
-            Logger.Debug("Calculating map coordinate look-up table.");
-
-            int size = Math.Max(mapWidth, mapHeight) * 2 + 1;
-            coordinateValidityLUT = new bool[size, size];
-
-            int yOffset = 0;
-            for (int col = 1; col <= mapWidth; col++)
-            {
-                int startY = mapWidth - yOffset;
-                for (int row = 0; row < mapHeight; row++)
-                {
-                    int x = col + row;
-                    int y = startY + row;
-                    coordinateValidityLUT[x, y] = true;
-                    if (col < mapWidth)
-                        coordinateValidityLUT[x + 1, y] = true;
-                }
-                yOffset += 1;
-            }
-        }
 
         /// <summary>
         /// Merges array of string key-value pairs to a single string array containing strings of the keys and values separated by =.
@@ -1631,10 +1471,12 @@ namespace MapTool
                 return null;
 
             string[] result = new string[keyValuePairs.Length];
+
             for (int i = 0; i < keyValuePairs.Length; i++)
             {
                 result[i] = keyValuePairs[i].Key + "=" + keyValuePairs[i].Value;
             }
+
             return result;
         }
 
@@ -1662,6 +1504,7 @@ namespace MapTool
             lines.Add("Theater tileset data gathered from file '" + theaterConfigINI.Filename + "'.");
             lines.Add("");
             lines.Add("");
+
             foreach (Tileset tileset in tilesets)
             {
                 if (tileset.TilesInSet < 1)
@@ -1669,11 +1512,13 @@ namespace MapTool
                     Logger.Debug("ListTileSetData: " + tileset.SetID + " (" + tileset.SetName + ")" + " skipped due to tile count of 0.");
                     continue;
                 }
+
                 lines.AddRange(tileset.GetPrintableData(tilecounter));
                 lines.Add("");
                 tilecounter += tileset.TilesInSet;
                 Logger.Debug("ListTileSetData: " + tileset.SetID + " (" + tileset.SetName + ")" + " added to the list.");
             }
+
             File.WriteAllLines(FilenameOutput, lines.ToArray());
         }
 
@@ -1689,6 +1534,7 @@ namespace MapTool
                 return tilesets;
 
             string[] sections = theaterConfigINI.GetSections();
+
             foreach (string section in sections)
             {
                 if (!Regex.IsMatch(section, "^TileSet\\d{4}$"))

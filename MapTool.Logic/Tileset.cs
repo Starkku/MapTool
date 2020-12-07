@@ -2,17 +2,17 @@
  * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation, either version 3 of
+ * as published by the Free Software Foundation, either version 2 of
  * the License, or (at your option) any later version. For more
  * information, see COPYING.
  */
 
-namespace MapTool.DataStructures
+namespace MapTool.Logic
 {
     /// <summary>
     /// Class for terrain tileset.
     /// </summary>
-    public class Tileset
+    internal class Tileset
     {
         /// <summary>
         /// Full tileset ID.
@@ -66,15 +66,15 @@ namespace MapTool.DataStructures
         /// <summary>
         /// Returns tileset data in printable format.
         /// </summary>
-        /// <param name="numOfTiles">Total number of tiles preceding this tileset.</param>
+        /// <param name="numberOfPrecedingTiles">Total number of tiles preceding this tileset.</param>
         /// <returns>Tileset data in printable format.</returns>
-        public string[] GetPrintableData(int numOfTiles)
+        public string[] GetPrintableData(int numberOfPrecedingTiles)
         {
             string[] data = new string[4];
             data[0] = SetID + " | " + SetName;
             data[1] = "Filename: " + FileName;
             data[2] = "Number of tiles: " + TilesInSet;
-            data[3] = "Range: " + numOfTiles.ToString() + "-" + ((numOfTiles + TilesInSet) - 1).ToString();
+            data[3] = "Range: " + numberOfPrecedingTiles.ToString() + "-" + ((numberOfPrecedingTiles + TilesInSet) - 1).ToString();
             return data;
         }
     }

@@ -2,14 +2,18 @@
  * Copyright 2017-2020 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation, either version 3 of
+ * as published by the Free Software Foundation, either version 2 of
  * the License, or (at your option) any later version. For more
  * information, see COPYING.
  */
 
-namespace MapTool.DataStructures
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace MapTool.Logic
 {
-    public abstract class IndexConversionRule
+    internal abstract class IndexConversionRule
     {
         /// <summary>
         /// Original start index number.
@@ -48,7 +52,7 @@ namespace MapTool.DataStructures
 
         public abstract bool IsValid { get; }
 
-        public IndexConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex, int newEndIndex, 
+        public IndexConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex, int newEndIndex,
             bool isRandomizer, int coordinateFilterX, int coordinateFilterY)
         {
             OriginalStartIndex = originalStartIndex;
@@ -76,7 +80,7 @@ namespace MapTool.DataStructures
     /// <summary>
     /// Terrain tile conversion rule.
     /// </summary>
-    public class TileConversionRule : IndexConversionRule
+    internal class TileConversionRule : IndexConversionRule
     {
         /// <summary>
         /// Tile height override.
@@ -92,6 +96,31 @@ namespace MapTool.DataStructures
         /// Tile ice growth value override.
         /// </summary>
         public int IceGrowthOverride { get; private set; } = -1;
+
+        /// <summary>
+        /// Original sub-tile start index number.
+        /// </summary>
+        public int OriginalSubStartIndex { get; private set; } = -1;
+
+        /// <summary>
+        /// Original sub-tile end index number.
+        /// </summary>
+        public int OriginalSubEndIndex { get; private set; } = -1;
+
+        /// <summary>
+        /// New sub-tile start index number.
+        /// </summary>
+        public int NewSubStartIndex { get; private set; } = -1;
+
+        /// <summary>
+        /// New sub-tile end index number.
+        /// </summary>
+        public int NewSubEndIndex { get; private set; } = -1;
+
+        /// <summary>
+        /// Is new sub-tile index picked randomly from range defined by start and end index?
+        /// </summary>
+        public bool IsSubRandomizer { get; private set; }
 
         /// <summary>
         /// Whether or not the rule is valid.
@@ -111,13 +140,23 @@ namespace MapTool.DataStructures
         /// <param name="iceGrowthOverride">Tile ice growth value override.</param>
         /// <param name="coordinateFilterX">Map tile coordinate filter for X coordinate.</param>
         /// <param name="coordinateFilterY">Map tile coordinate filter for Y coordinate.</param>
-        public TileConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex = -1, int newEndIndex = -1, 
-            bool isRandomizer = false, int heightOverride = -1, int subIndexOverride = -1, int iceGrowthOverride = -1, int coordinateFilterX = -1, int coordinateFilterY = -1) :
+        /// <param name="originalSubStartIndex">Original sub-tile start index.</param>
+        /// <param name="newSubStartIndex">New sub-tile start index.</param>
+        /// <param name="originalSubEndIndex">Original sub-tile end index.</param>
+        /// <param name="newSubEndIndex">New sub-tile end index.</param>
+        public TileConversionRule(int originalStartIndex, int newStartIndex, int originalEndIndex = -1, int newEndIndex = -1,
+            bool isRandomizer = false, int heightOverride = -1, int subIndexOverride = -1, int iceGrowthOverride = -1, int coordinateFilterX = -1, int coordinateFilterY = -1,
+            int originalSubStartIndex = -1, int newSubStartIndex = -1, int originalSubEndIndex = -1, int newSubEndIndex = -1, bool isSubRandomizer = false) :
             base(originalStartIndex, newStartIndex, originalEndIndex, newEndIndex, isRandomizer, coordinateFilterX, coordinateFilterY)
         {
             HeightOverride = heightOverride;
             SubIndexOverride = subIndexOverride;
             IceGrowthOverride = iceGrowthOverride;
+            OriginalSubStartIndex = originalSubStartIndex;
+            NewSubStartIndex = newSubStartIndex;
+            OriginalSubEndIndex = originalSubEndIndex;
+            NewSubEndIndex = newSubEndIndex;
+            IsSubRandomizer = isSubRandomizer;
         }
 
         /// <summary>
@@ -138,7 +177,7 @@ namespace MapTool.DataStructures
     /// <summary>
     /// Overlay object conversion rule.
     /// </summary>
-    public class OverlayConversionRule : IndexConversionRule
+    internal class OverlayConversionRule : IndexConversionRule
     {
         /// <summary>
         /// Original overlay frame start index.
@@ -225,7 +264,7 @@ namespace MapTool.DataStructures
     /// <summary>
     /// General object conversion rule.
     /// </summary>
-    public class ObjectConversionRule
+    internal class ObjectConversionRule
     {
         /// <summary>
         /// Original object name.
@@ -248,16 +287,39 @@ namespace MapTool.DataStructures
         public int CoordinateFilterY { get; private set; } = -1;
 
         /// <summary>
+        /// Original object upgrade names.
+        /// </summary>
+        public string[] OriginalUpgrades { get; private set; } = new string[3] { "*", "*", "*" };
+
+        /// <summary>
+        /// New object upgrade names.
+        /// </summary>
+        public string[] NewUpgrades { get; private set; } = new string[3] { "*", "*", "*" };
+
+        /// <summary>
         /// Creates new general object conversion rule.
         /// </summary>
         /// <param name="originalName">Original object name.</param>
         /// <param name="newName">New object name.<param>
+        /// <param name="originalUpgrades">Old object upgrade names.</param>/>
+        /// <param name="newUpgrades">New object upgrade names.</param>/>
         /// <param name="coordinateFilterX">Map tile coordinate filter for X coordinate.</param>
         /// <param name="coordinateFilterY">Map tile coordinate filter for Y coordinate.</param>
-        public ObjectConversionRule(string originalName, string newName, int coordinateFilterX = -1, int coordinateFilterY = -1)
+        public ObjectConversionRule(string originalName, string newName, IList<string> originalUpgrades, IList<string> newUpgrades, int coordinateFilterX = -1, int coordinateFilterY = -1)
         {
             OriginalName = originalName;
             NewName = newName;
+
+            for (int i = 0; i < Math.Min(OriginalUpgrades.Length, originalUpgrades.Count); i++)
+            {
+                OriginalUpgrades[i] = originalUpgrades[i];
+            }
+
+            for (int i = 0; i < Math.Min(NewUpgrades.Length, newUpgrades.Count); i++)
+            {
+                NewUpgrades[i] = newUpgrades[i];
+            }
+
             CoordinateFilterX = coordinateFilterX;
             CoordinateFilterY = coordinateFilterY;
         }
@@ -266,7 +328,7 @@ namespace MapTool.DataStructures
     /// <summary>
     /// INI section conversion rule.
     /// </summary>
-    public class SectionConversionRule
+    internal class SectionConversionRule
     {
         /// <summary>
         /// Original section name.

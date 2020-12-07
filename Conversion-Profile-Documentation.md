@@ -85,7 +85,7 @@ If set to yes / true, removes all clear tiles at lowest elevation level (0). Sin
 
 ### TileRules
 
-A list of tile index conversion rules, each on it's own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values. Can also be prefixed by a tile coordinate filter in brackets, _f.ex (X,Y)_.
+A list of tile index conversion rules, each on its own line with | as separator between source and destination value, as well as optional height override and sub-tile index override values. Can also be prefixed by a tile coordinate filter in brackets, _f.ex (X,Y)_.
 
 To assist in figuring out the numbers to use, MapTool can be run with command line parameter *-l* with a game theater configuration INI (such as temperat(md).ini) as input file to extract a listing of tiles and their tile indices to a plaintext output file.
 
@@ -157,12 +157,24 @@ This randomly assigns new tile index from range 25 to 45 to tiles 0-15, as well 
 (32,*)16-20|50-54
 </pre>
 
-Tiles 0-15 will get converted to tiles 25-40, respectively, but only at specific tile coordinate X = 25, Y = 50.
-Tiles 16-20 will get converted to tiles 50-54, respectively, but only at specific tile coordinates where X = 32.
+Tiles 0-15 will get converted to tiles 25-40, respectively, but only at specific tile coordinate X = 25, Y = 50.  
+Tiles 16-20 will get converted to tiles 50-54, respectively, but only at specific tile coordinates where X = 32.  
+
+**Example #9:**
+<pre>
+[TileRules]
+0-15|25-40|*|*|*|0-3|1-1
+16-20|50-54|*|*|*|1|2
+21|60|3|*|*|1|2
+</pre>
+
+Tiles 0-15 will get converted to tiles 25-40 but only for tiles using sub-tiles 0-3, which will also get converted to using sub-tile 1.  
+Tiles 16-20 will get converted to tiles 50-54 but only for tiles using sub-tile 1, which will also get converted to using sub-tile 2.  
+Tile 21 will get converted to tile 60 but only for tiles using sub-tile 1, which gets converted to sub-tile 3 because sub-tile index override has been defined and takes precedence over the target sub-tile range which has been set to 2.  
 
 ### OverlayRules
 
-A list of overlay ID conversion rules, each on it's own line with a | as a separator between source and destination value.  Can also be prefixed by a tile coordinate filter in brackets, _f.ex (X,Y)_.
+A list of overlay ID conversion rules, each on its own line with a | as a separator between source and destination value.  Can also be prefixed by a tile coordinate filter in brackets, _f.ex (X,Y)_.
 
 **Example:**
 <pre>
@@ -176,18 +188,18 @@ A list of overlay ID conversion rules, each on it's own line with a | as a separ
 (32,*)31|53
 </pre>
 
-Overlays with ID 0 are converted to overlays with ID 5.
-Overlays with ID 15 are randomly assigned new ID from range of 20 to 30, likewise for overlays with ID in range of 16 to 19.
-Overlays with ID 6 will have their frame data for frames 0 to 2 changed to 12.
-Overlays with ID 8 will have their frame data for frames 0 to 255 changed to randomly assigned value from 0 to 50.
-Overlay with ID 20 will be converted to overlay with ID 52, but only at tile coordinate where X = 25 and Y = 50.
-Overlay with ID 31 will be converted to overlay with ID 64, but only at tile coordinates where X = 32.
+Overlays with ID 0 are converted to overlays with ID 5.  
+Overlays with ID 15 are randomly assigned new ID from range of 20 to 30, likewise for overlays with ID in range of 16 to 19.  
+Overlays with ID 6 will have their frame data for frames 0 to 2 changed to 12.  
+Overlays with ID 8 will have their frame data for frames 0 to 255 changed to randomly assigned value from 0 to 50.  
+Overlay with ID 20 will be converted to overlay with ID 52, but only at tile coordinate where X = 25 and Y = 50.  
+Overlay with ID 31 will be converted to overlay with ID 64, but only at tile coordinates where X = 32.  
 
 ID values from 0 to 254 are available for for regular use. Using 255 as destination ID will remove overlays. 255 as a source ID is ignored unless tile coordinate filter is in use. Frame values from 0 to 255 are available for use as both source and destination values.
 
 ### ObjectRules
 
-A list of object ID conversion rules, each on it's own line with a | as a separator between source and destination value.
+A list of object ID conversion rules, each on its own line with a | as a separator between source and destination value.
 
 **Example #1:**
 <pre>
@@ -195,7 +207,7 @@ A list of object ID conversion rules, each on it's own line with a | as a separa
 GACNST|YACNST
 </pre>
 
-Will convert any objects, be it Infantry, Building, Aircraft, Vehicle or Terrain with ID GACNST on the processed maps to an object of same type with ID YACNST.
+All objects with ID `GACNST`, be it Infantry, Building, Aircraft, Vehicle or Terrain are replaced by an object of same type with ID `YACNST`.
 
 **Example #2**
 <pre>
@@ -203,11 +215,25 @@ Will convert any objects, be it Infantry, Building, Aircraft, Vehicle or Terrain
 GACNST
 </pre>
 
-Will remove any objects, be it Infantry, Building, Aircraft, Vehicle or Terrain with ID GACNST on the processed maps.
+All objects with ID `GACNST`, be it Infantry, Building, Aircraft, Vehicle or Terrain are removed.
 
+**Example #3**
+<pre>
+[ObjectRules]
+GAPOWR+GAPOWRUP|NAPOWR
+GAPOWR+GAPOWRUP,GAPOWRUP|NAAPWR
+GACTWR+*|GACTWR+GAVULC
+GAPLUG+GAPLUG3|GAPLUG+None,None,None
+</pre>
+
+All buildings with ID `GAPOWR` with upgrade with ID `GAPOWRUP` in first upgrade slot are replaced with building with ID `NAPOWR`.  
+All buildings with ID `GAPOWR` with upgrade with ID `GAPOWRUP` in both first and second upgrade slots are replaced with building with ID `NAAPWR`.  
+All buildings with ID `GACTWR` with any upgrade or no upgrade in the first upgrade slot with building are replaced with building with ID `GACTWR` with upgrade with ID `GAVULC` in first upgrade slot.  
+All buildings with ID `GAPLUG` with upgrade with ID `GAPLUG3` in the first upgrade slot with building are replaced with building with ID `GAPLUG` with no upgrades in any slot.  
+ 
 ### SectionRules
 
-A list of section name, keys and values conversion rules, each on it's own line with | as a separator between section name, key and value information.
+A list of section name, keys and values conversion rules, each on its own line with | as a separator between section name, key and value information.
 
 **Example #1:**
 <pre>
@@ -215,7 +241,7 @@ A list of section name, keys and values conversion rules, each on it's own line 
 Basic|Official|no
 </pre>
 
-Sets the value for key 'Official' under section 'Basic' to 'no'.
+Sets the value for key `Official` under section `Basic` to `no`.
 
 **Example #2:**
 <pre>
@@ -223,7 +249,7 @@ Sets the value for key 'Official' under section 'Basic' to 'no'.
 Basic|Official=
 </pre>
 
-Removes key 'Official' under section 'Basic'.
+Removes key `Official` under section `Basic`.
 
 **Example #3:**
 <pre>
@@ -231,7 +257,7 @@ Removes key 'Official' under section 'Basic'.
 Basic=
 </pre>
 
-Removes section 'Basic' altogether.
+Removes section `Basic` altogether.
 
 **Example #4:**
 <pre>
@@ -239,7 +265,7 @@ Removes section 'Basic' altogether.
 Basic=NotSoBasic|Official=Unofficial|Yes
 </pre>
 
-Changes name of section 'Basic' to 'NotSoBasic', name of key 'Official' under said section to 'Unofficial' and it's value to 'Yes'.
+Changes name of section `Basic` to `NotSoBasic`, name of key `Official` under said section to `Unofficial` and its value to `Yes`.
 
 **Example #5:**
 <pre>
@@ -247,7 +273,7 @@ Changes name of section 'Basic' to 'NotSoBasic', name of key 'Official' under sa
 Basic|Official|$GETVAL(SpecialFlags,DestroyableBridges)
 </pre>
 
-Sets the value of key 'Official' under section 'Basic' to the value of key 'DestroyableBridges' under section 'SpecialFlags'.
+Sets the value of key `Official` under section `Basic` to the value of key `DestroyableBridges` under section `SpecialFlags`.
 
 **Example #6:**
 <pre>
@@ -259,12 +285,12 @@ Lighting|IonBlue|$GETVAL(Lighting,Green,/,0.25)
 Lighting|IonLevel|$GETVAL(Lighting,Level,*,0.2515,false)
 </pre>
 
-Sets the value of following keys under 'Lighting' to:
+Sets the value of following keys under `Lighting` to:
 
-'IonAmbient' to value of 'Ambient' plus 0.1.  
-'IonRed' to value of 'Red' minus 0.1.  
-'IonGreen' to value of 'Green' multiplied by 0.25.  
-'IonBlue' to value of 'Blue' divided by 0.  
-'IonLevel' to value of 'Level' multiplied by 0.2515 with fractional part of the result truncated.  
+`IonAmbient` to value of `Ambient` plus 0.1.  
+`IonRed` to value of `Red` minus 0.1.  
+`IonGreen` to value of `Green` multiplied by 0.25.  
+`IonBlue` to value of `Blue` divided by 0.  
+`IonLevel` to value of `Level` multiplied by 0.2515 with fractional part of the result truncated.  
 
 Negative values can be used for the operand. With / operator, using 0 is treated same way as 1.

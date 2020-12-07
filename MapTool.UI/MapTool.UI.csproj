@@ -73,8 +73,9 @@
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="StarkkuUtils">
-      <HintPath>..\References\StarkkuUtils.dll</HintPath>
+    <Reference Include="Starkku.Utilities, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\References\Starkku.Utilities.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -96,6 +97,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ShowSelectedInExplorer.cs" />
     <EmbeddedResource Include="MapTool.UI.resx">
       <DependentUpon>MapTool.UI.cs</DependentUpon>
     </EmbeddedResource>
@@ -122,12 +124,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MapTool\MapTool.csproj">
-      <Project>{263073ed-ead2-493c-bc60-705db71e2624}</Project>
-      <Name>MapTool</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="MapTool.ico" />
   </ItemGroup>
   <ItemGroup>
@@ -136,6 +132,12 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MapTool.Logic\MapTool.Logic.csproj">
+      <Project>{d0f68844-37cf-4de4-a0b9-9baf3c85f8e7}</Project>
+      <Name>MapTool.Logic</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

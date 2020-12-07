@@ -44,7 +44,8 @@ if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\BuildTools\MSBuild\Cu
 
 rd /S /Q Compiled\Profiles
 
-xcopy /y MapTool.UI\bin\Release\MapTool.exe Compiled\MapTool.exe*
+xcopy /y MapTool\bin\Release\MapTool.exe Compiled\MapTool.exe*
 xcopy /y MapTool.UI\bin\Release\MapTool.UI.exe Compiled\MapTool.UI.exe*
-xcopy /y MapTool.UI\bin\Release\StarkkuUtils.dll Compiled\StarkkuUtils.dll*
+xcopy /y MapTool\bin\Release\MapTool.Logic.dll Compiled\MapTool.Logic.dll*
+xcopy /y MapTool\bin\Release\Starkku.Utilities.dll Compiled\Starkku.Utilities.dll*
 xcopy /y /i MapTool.UI\bin\Release\Profiles Compiled\Profiles
