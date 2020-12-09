@@ -417,6 +417,18 @@ namespace MapTool.Logic
             if (errorMessage != null)
                 return errorMessage;
 
+            if (coordinateValidityLUT == null)
+                CalculateCoordinateValidityLUT();
+
+            for (int x = 0; x < coordinateValidityLUT.GetLength(0); x++)
+                for (int y = 0; y < coordinateValidityLUT.GetLength(1); y++)
+                    if (coordinateValidityLUT[x, y])
+                    {
+                        MapTile tile = new MapTile((short)x, (short)y);
+                        tile.PropertyChanged += MapTile_PropertyChanged;
+                        mapTiles.Add(tile);
+                    }
+
             int bytesRead = 0;
 
             for (int i = 0; i < cellCount; i++)
@@ -431,11 +443,15 @@ namespace MapTool.Logic
                 byte level = isoMapPack[bytesRead++];
                 byte iceGrowth = isoMapPack[bytesRead++];
 
-                if (x > 0 && y > 0 && x <= 16384 && y <= 16384)
+                if (x > 0 && y > 0 && x < 512 && y < 512)
                 {
-                    MapTile tile = new MapTile((short)x, (short)y, tileNum, subTile, level, iceGrowth);
-                    tile.PropertyChanged += MapTile_PropertyChanged;
-                    mapTiles.Add(tile);
+                    int index = mapTiles.FindIndex(t => t.X == x && t.Y == y);
+                    if (index >= 0)
+                    {
+                        MapTile tile = new MapTile((short)x, (short)y, tileNum, subTile, level, iceGrowth);
+                        tile.PropertyChanged += MapTile_PropertyChanged;
+                        mapTiles[index] = tile;
+                    }
                 }
             }
 
