@@ -227,7 +227,7 @@ namespace MapTool.Logic
 
         #region private_fields
 
-        private List<MapTile> mapTiles = null;
+        private Dictionary<Tuple<int, int>, MapTile> mapTiles = null;
         private List<MapOverlay> mapOverlays = null;
         private Bitmap previewBitmap = null;
         private bool tileDataAltered;
@@ -388,7 +388,7 @@ namespace MapTool.Logic
             if (mapTiles != null)
                 return "Map tile data has already been loaded.";
 
-            mapTiles = new List<MapTile>();
+            mapTiles = new Dictionary<Tuple<int, int>, MapTile>();
 
             int cellCount;
             byte[] isoMapPack;
@@ -421,13 +421,17 @@ namespace MapTool.Logic
                 CalculateCoordinateValidityLUT();
 
             for (int x = 0; x < coordinateValidityLUT.GetLength(0); x++)
+            {
                 for (int y = 0; y < coordinateValidityLUT.GetLength(1); y++)
+                {
                     if (coordinateValidityLUT[x, y])
                     {
                         MapTile tile = new MapTile((short)x, (short)y);
                         tile.PropertyChanged += MapTile_PropertyChanged;
-                        mapTiles.Add(tile);
+                        mapTiles.Add(new Tuple<int, int>(x, y), tile);
                     }
+                }
+            }
 
             int bytesRead = 0;
 
@@ -445,12 +449,13 @@ namespace MapTool.Logic
 
                 if (x > 0 && y > 0 && x < 512 && y < 512)
                 {
-                    int index = mapTiles.FindIndex(t => t.X == x && t.Y == y);
-                    if (index >= 0)
+                    var key = new Tuple<int, int>(x, y);
+
+                    if (mapTiles.ContainsKey(key))
                     {
                         MapTile tile = new MapTile((short)x, (short)y, tileNum, subTile, level, iceGrowth);
                         tile.PropertyChanged += MapTile_PropertyChanged;
-                        mapTiles[index] = tile;
+                        mapTiles[key] = tile;
                     }
                 }
             }
@@ -476,11 +481,12 @@ namespace MapTool.Logic
             byte[] isoMapPack = new byte[mapTiles.Count * 11 + 4];
             int i = 0;
 
-            foreach (MapTile t in mapTiles)
+            foreach (KeyValuePair<Tuple<int, int>, MapTile> kvp in mapTiles)
             {
-                byte[] x = BitConverter.GetBytes(t.X);
-                byte[] y = BitConverter.GetBytes(t.Y);
-                byte[] tilei = BitConverter.GetBytes(t.TileIndex);
+                MapTile tile = kvp.Value;
+                byte[] x = BitConverter.GetBytes(tile.X);
+                byte[] y = BitConverter.GetBytes(tile.Y);
+                byte[] tilei = BitConverter.GetBytes(tile.TileIndex);
                 isoMapPack[i] = x[0];
                 isoMapPack[i + 1] = x[1];
                 isoMapPack[i + 2] = y[0];
@@ -489,9 +495,9 @@ namespace MapTool.Logic
                 isoMapPack[i + 5] = tilei[1];
                 isoMapPack[i + 6] = tilei[2];
                 isoMapPack[i + 7] = tilei[3];
-                isoMapPack[i + 8] = t.SubTileIndex;
-                isoMapPack[i + 9] = t.Level;
-                isoMapPack[i + 10] = t.IceGrowth;
+                isoMapPack[i + 8] = tile.SubTileIndex;
+                isoMapPack[i + 9] = tile.Level;
+                isoMapPack[i + 10] = tile.IceGrowth;
                 i += 11;
             }
 
@@ -689,7 +695,7 @@ namespace MapTool.Logic
             if (mapTiles == null)
                 return new MapTile[0];
 
-            return mapTiles.ToArray();
+            return mapTiles.Values.ToArray();
         }
 
         /// <summary>
@@ -699,7 +705,10 @@ namespace MapTool.Logic
         /// <returns>True if map tile was found and removed, otherwise false.</returns>
         public bool RemoveMapTile(MapTile mapTile)
         {
-            if (HasTileData && mapTiles.Remove(mapTile))
+            if (!HasTileData || !mapTiles.ContainsValue(mapTile))
+                return false;
+
+            if (mapTiles.Remove(new Tuple<int, int>(mapTile.X, mapTile.Y)))
             {
                 tileDataAltered = true;
                 return true;
@@ -718,10 +727,13 @@ namespace MapTool.Logic
             if (!HasTileData)
                 return 0;
 
-            int numberRemoved = this.mapTiles.RemoveAll(x => mapTiles.Contains(x));
+            int numberRemoved = 0;
 
-            if (numberRemoved > 0)
-                tileDataAltered = true;
+            foreach (MapTile tile in mapTiles)
+            {
+                if (RemoveMapTile(tile))
+                    numberRemoved++;
+            }
 
             return numberRemoved;
         }
@@ -733,14 +745,9 @@ namespace MapTool.Logic
         /// <returns>True if map tile was replaced, otherwise false.</returns>
         public bool ReplaceMapTile(MapTile mapTile)
         {
-            if (HasTileData)
+            if (HasTileData && mapTiles.ContainsValue(mapTile))
             {
-                int index = mapTiles.FindIndex(t => t.X == mapTile.X && t.Y == mapTile.Y);
-
-                if (index < 0)
-                    return false;
-
-                mapTiles[index] = mapTile;
+                mapTiles[new Tuple<int, int>(mapTile.X, mapTile.Y)] = mapTile;
                 mapTile.PropertyChanged -= MapTile_PropertyChanged;
                 mapTile.PropertyChanged += MapTile_PropertyChanged;
                 tileDataAltered = true;
@@ -778,7 +785,7 @@ namespace MapTool.Logic
             if (!HasTileData)
                 return false;
 
-            IOrderedEnumerable<MapTile> sortedTiles = null;
+            IOrderedEnumerable<KeyValuePair<Tuple<int, int>, MapTile>> sortedTiles = null;
             int index = 0;
 
             foreach (PropertyInfo propertyInfo in propertyInfos)
@@ -788,11 +795,11 @@ namespace MapTool.Logic
 
                 if (index == 0)
                 {
-                    sortedTiles = mapTiles.OrderBy(x => propertyInfo.GetValue(x, null));
+                    sortedTiles = mapTiles.OrderBy(x => propertyInfo.GetValue(x.Value, null));
                 }
                 else if (sortedTiles != null)
                 {
-                    sortedTiles = sortedTiles.ThenBy(x => propertyInfo.GetValue(x, null));
+                    sortedTiles = sortedTiles.ThenBy(x => propertyInfo.GetValue(x.Value, null));
                 }
 
                 index++;
@@ -800,7 +807,7 @@ namespace MapTool.Logic
 
             if (sortedTiles != null)
             {
-                mapTiles = sortedTiles.ToList();
+                mapTiles = sortedTiles.ToDictionary(x => x.Key, x => x.Value);
                 tileDataAltered = true;
             }
             else
@@ -1010,7 +1017,7 @@ namespace MapTool.Logic
             if (tileDataAltered || !(sender is MapTile))
                 return;
 
-            if (mapTiles.Contains(sender as MapTile))
+            if (mapTiles.ContainsValue(sender as MapTile))
                 tileDataAltered = true;
         }
 
