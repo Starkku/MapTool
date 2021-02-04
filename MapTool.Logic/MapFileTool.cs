@@ -836,6 +836,8 @@ namespace MapTool.Logic
                 if (!tile.IsValid)
                     continue;
 
+                bool tileModified = false;
+
                 foreach (TileConversionRule rule in tileRules)
                 {
                     if (rule.CoordinateFilterX > -1 && rule.CoordinateFilterX != tile.X ||
@@ -860,7 +862,7 @@ namespace MapTool.Logic
                             {
                                 Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + "  - height changed from " + tile.Level + " to " + height + ".");
                                 tile.Level = height;
-                                tileDataChanged = true;
+                                tileModified = true;
                             }
                         }
 
@@ -871,7 +873,7 @@ namespace MapTool.Logic
                             {
                                 Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - sub tile index changed from " + tile.SubTileIndex + " to " + subtileIndex + ".");
                                 tile.SubTileIndex = subtileIndex;
-                                tileDataChanged = true;
+                                tileModified = true;
                             }
                         }
 
@@ -882,7 +884,7 @@ namespace MapTool.Logic
                             {
                                 Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - ice growth flag changed from " + tile.IceGrowth + " to " + iceGrowth + ".");
                                 tile.IceGrowth = iceGrowth;
-                                tileDataChanged = true;
+                                tileModified = true;
                             }
                         }
 
@@ -902,7 +904,7 @@ namespace MapTool.Logic
                         {
                             Logger.Debug("TileRules: Tile index " + tile.TileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - index changed to " + newTileIndex);
                             tile.TileIndex = newTileIndex;
-                            tileDataChanged = true;
+                            tileModified = true;
                         }
 
                         if (rule.SubIndexOverride < 0 && rule.NewSubStartIndex >= 0 && rule.NewSubEndIndex >= 0)
@@ -923,10 +925,15 @@ namespace MapTool.Logic
                             {
                                 Logger.Debug("TileRules: Tile sub-tile index " + tile.SubTileIndex + " at X:" + tile.X + ", Y:" + tile.Y + " - index changed to " + newSubTileIndex);
                                 tile.SubTileIndex = newSubTileIndex;
-                                tileDataChanged = true;
+                                tileModified = true;
                             }
                         }
                     }
+
+                    tileDataChanged = tileDataChanged || tileModified;
+
+                    if (tileModified)
+                        break;
                 }
             }
 
