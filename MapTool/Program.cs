@@ -58,6 +58,7 @@ namespace MapTool
                 ShowHelp();
                 return;
             }
+
             if (string.IsNullOrEmpty(settings.FileConfig) && !settings.List)
             {
                 Logger.Error("Not enough arguments. Must provide either -l or -p.");
@@ -72,6 +73,7 @@ namespace MapTool
             {
                 Logger.Info("Mode set (-p): Apply Conversion Profile.");
             }
+
             if (string.IsNullOrEmpty(settings.FileInput))
             {
                 Logger.Error("No valid input file specified.");
@@ -84,15 +86,19 @@ namespace MapTool
                 ShowHelp();
                 error = true;
             }
-            if (error) return;
-            else Logger.Info("Input file path OK.");
-            if (settings.List)
+
+            if (error)
+                return;
+            else
+                Logger.Info("Input file path OK.");
+
+            if (string.IsNullOrEmpty(settings.FileOutput))
             {
-                if (string.IsNullOrEmpty(settings.FileOutput))
-                {
-                    Logger.Warn("No output file available. Using input as output.");
+                Logger.Warn("No output file specified. Saving output to input file.");
+                if (settings.List)
                     settings.FileOutput = Path.ChangeExtension(settings.FileInput, ".txt");
-                }
+                else
+                    settings.FileOutput = settings.FileInput;
             }
             else
                 Logger.Info("Output file path OK.");
@@ -120,7 +126,7 @@ namespace MapTool
                 mapTool.ConvertSectionData();
                 mapTool.ConvertTheaterData();
             }
-            
+
             mapTool.Save();
         }
 

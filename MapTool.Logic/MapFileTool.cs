@@ -154,8 +154,8 @@ namespace MapTool.Logic
             if (listTheaterData && !string.IsNullOrEmpty(FilenameInput))
             {
                 theaterConfigINI = new INIFile(FilenameInput);
+                Initialized = true;
             }
-
             else if (!string.IsNullOrEmpty(FilenameInput) && !string.IsNullOrEmpty(FilenameOutput))
             {
                 Logger.Info("Initializing map file '" + FilenameInput + "'.");
@@ -278,9 +278,10 @@ namespace MapTool.Logic
                 ParseConversionRules(overlayrules, overlayRules);
                 ParseConversionRules(objectrules, objectRules);
                 ParseConversionRules(sectionrules, sectionRules);
+
+                Initialized = true;
             }
 
-            Initialized = true;
         }
 
         /// <summary>
