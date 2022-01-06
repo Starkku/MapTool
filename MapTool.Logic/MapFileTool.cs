@@ -1482,7 +1482,7 @@ namespace MapTool.Logic
 
             for (int i = 0; i < keyValuePairs.Length; i++)
             {
-                result[i] = keyValuePairs[i].Key + "=" + keyValuePairs[i].Value;
+                result[i] = keyValuePairs[i].Key + (string.IsNullOrEmpty(keyValuePairs[i].Value) ? "" : "=" + keyValuePairs[i].Value);
             }
 
             return result;
