@@ -251,7 +251,7 @@ namespace MapTool.UI
             {
                 string ext = Path.GetExtension(filename);
 
-                if (!validMapFileExtensions.Contains(ext))
+                if (!validMapFileExtensions.Contains(ext.ToLowerInvariant()))
                     continue;
 
                 if (CheckIfDuplicate(filename))
