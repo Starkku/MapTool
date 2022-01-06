@@ -234,6 +234,7 @@ All buildings with ID `GAPLUG` with upgrade with ID `GAPLUG3` in the first upgra
 ### SectionRules
 
 A list of section name, keys and values conversion rules, each on its own line with | as a separator between section name, key and value information.
+A combination of two characters `->` can be used to separate old and new value for section and key names.
 
 **Example #1:**
 <pre>
@@ -246,7 +247,7 @@ Sets the value for key `Official` under section `Basic` to `no`.
 **Example #2:**
 <pre>
 [SectionRules]
-Basic|Official=
+Basic|Official->
 </pre>
 
 Removes key `Official` under section `Basic`.
@@ -254,7 +255,7 @@ Removes key `Official` under section `Basic`.
 **Example #3:**
 <pre>
 [SectionRules]
-Basic=
+Basic->
 </pre>
 
 Removes section `Basic` altogether.
@@ -262,7 +263,7 @@ Removes section `Basic` altogether.
 **Example #4:**
 <pre>
 [SectionRules]
-Basic=NotSoBasic|Official=Unofficial|Yes
+Basic->NotSoBasic|Official->Unofficial|Yes
 </pre>
 
 Changes name of section `Basic` to `NotSoBasic`, name of key `Official` under said section to `Unofficial` and its value to `Yes`.

@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2017-2020 by Starkku
+ * Copyright 2017-2022 by Starkku
  * This file is part of MapTool, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 2 of
@@ -135,6 +135,8 @@ namespace MapTool.Logic
         /// Random number generator.
         /// </summary>
         private readonly Random random = new Random();
+
+        private const string sectionRuleKVSplitString = "->";
 
         #endregion
 
@@ -608,39 +610,55 @@ namespace MapTool.Logic
                     continue;
 
                 string[] values = ruleString.Split('|');
-                string newSection = "";
-                string originalKey = "";
-                string newKey = "";
-                string newValue = "";
+                string newSection = null;
+                string originalKey = null;
+                string newKey = null;
+                string newValue = null;
+
                 if (values.Length > 0)
                 {
-                    if (values[0].StartsWith("="))
-                        values[0] = values[0].Substring(1, values[0].Length - 1);
-
-                    string[] sec = values[0].Split('=');
+                    string[] sec = values[0].Split(new string[] { sectionRuleKVSplitString }, StringSplitOptions.RemoveEmptyEntries);
 
                     if (sec == null || sec.Length < 1)
                         continue;
 
                     string originalSection = sec[0];
 
-                    if (sec.Length == 1 && values[0].Contains('=') || sec.Length > 1 && values[0].Contains('=') &&
-                        string.IsNullOrEmpty(sec[1]))
+                    if (sec.Length == 1 && values[0].Contains(sectionRuleKVSplitString) || 
+                        sec.Length > 1 && values[0].Contains(sectionRuleKVSplitString) && string.IsNullOrEmpty(sec[1]))
+                    {
                         newSection = null;
+                    }
                     else if (sec.Length > 1)
+                    {
                         newSection = sec[1];
+                    }
+                    else
+                    {
+                        newSection = originalSection;
+                    }
 
                     if (values.Length > 1)
                     {
-                        string[] key = values[1].Split('=');
+                        string[] key = values[1].Split(new string[] { sectionRuleKVSplitString }, StringSplitOptions.RemoveEmptyEntries);
 
                         if (key != null && key.Length > 0)
                         {
                             originalKey = key[0];
 
-                            if (key.Length == 1 && values[1].Contains('=') || key.Length > 1 && values[1].Contains('=') &&
-                                string.IsNullOrEmpty(key[1])) newKey = null;
-                            else if (key.Length > 1) newKey = key[1];
+                            if (key.Length == 1 && values[1].Contains(sectionRuleKVSplitString) || 
+                                key.Length > 1 && values[1].Contains(sectionRuleKVSplitString) && string.IsNullOrEmpty(key[1]))
+                            {
+                                newKey = null;
+                            }
+                            else if (key.Length > 1)
+                            {
+                                newKey = key[1];
+                            }
+                            else
+                            {
+                                newKey = originalKey;
+                            }
                         }
 
                         if (values.Length > 2)
@@ -1408,15 +1426,15 @@ namespace MapTool.Logic
                 if (string.IsNullOrEmpty(rule.OriginalSection))
                     continue;
 
-                string currentSection = rule.OriginalSection;
+                string currentSection;
 
-                if (rule.NewSection == null)
+                if (string.IsNullOrEmpty(rule.NewSection))
                 {
                     Logger.Debug("SectionRules: Removed section '" + rule.OriginalSection + "'.");
                     map.RemoveSection(rule.OriginalSection);
                     continue;
                 }
-                else if (rule.NewSection != "")
+                else
                 {
                     if (!map.SectionExists(rule.OriginalSection))
                     {
@@ -1432,15 +1450,15 @@ namespace MapTool.Logic
                     currentSection = rule.NewSection;
                 }
 
-                string currentKey = rule.OriginalKey;
+                string currentKey;
 
-                if (rule.NewKey == null)
+                if (string.IsNullOrEmpty(rule.NewKey))
                 {
                     Logger.Debug("SectionRules: Removed key '" + rule.OriginalKey + "' from section '" + currentSection + "'.");
                     map.RemoveKey(currentSection, rule.OriginalKey);
                     continue;
                 }
-                else if (rule.NewKey != "")
+                else
                 {
                     if (map.GetKey(currentSection, rule.OriginalKey, null) == null)
                     {
@@ -1456,7 +1474,7 @@ namespace MapTool.Logic
                     currentKey = rule.NewKey;
                 }
 
-                if (rule.NewValue != "")
+                if (rule.NewValue != null)
                 {
                     Logger.Debug("SectionRules: Section '" + currentSection + "' key '" + currentKey + "' value changed to '" + rule.NewValue + "'.");
                     map.SetKey(currentSection, currentKey, rule.NewValue);
@@ -1482,7 +1500,7 @@ namespace MapTool.Logic
 
             for (int i = 0; i < keyValuePairs.Length; i++)
             {
-                result[i] = keyValuePairs[i].Key + (string.IsNullOrEmpty(keyValuePairs[i].Value) ? "" : "=" + keyValuePairs[i].Value);
+                result[i] = keyValuePairs[i].Key + (string.IsNullOrEmpty(keyValuePairs[i].Value) ? "" : keyValuePairs[i].Value);
             }
 
             return result;
