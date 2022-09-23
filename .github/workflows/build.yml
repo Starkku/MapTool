@@ -1,0 +1,62 @@
+name: Build Release
+
+on:
+  push:
+    branches: 
+      - master
+      - main
+
+env:
+  SOLUTION_NAME: MapTool
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set Short Checksum
+      shell: bash
+      run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
+      
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1
+      
+    - name: Create Build Directory
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: mkdir _build
+
+    - name: Build Solution
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      shell: cmd
+      run: |
+        msbuild.exe ${{ env.SOLUTION_NAME }}.sln /m /p:DeleteExistingFiles=True /p:platform="Any CPU" /p:configuration="Release" /p:OutputPath="../_build"
+    
+    - name: Archive Release
+      uses: thedoctor0/zip-release@main
+      with:
+        type: 'zip'
+        filename: '${{ env.SOLUTION_NAME }}-${{ env.SHORT_SHA }}.zip'
+        path: |
+          ./_build/*.exe
+          ./_build/*.dll
+          ./_build/Profiles
+          
+    - name: Create Release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          title: Build ${{ env.SHORT_SHA }}
+          prerelease: true
+          files: ${{ env.SOLUTION_NAME }}-${{ env.SHORT_SHA }}.zip
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.SOLUTION_NAME }}-${{github.sha}}
+        path: |
+          ./_build/*.exe
+          ./_build/*.dll
+          ./_build/Profiles/*

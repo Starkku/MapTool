@@ -2,17 +2,15 @@
 
 This program exists to apply conversion profiles, 'scripts' of sorts to map files from Command & Conquer: Tiberian Sun and Command & Conquer: Red Alert 2 and their respective expansion packs that offer ability to alter map's theater, tile, overlay and other object data, essentially allowing user to perform operations such as cross-theater, or even cross-game map conversions.
 
-Project Page:
+Project Page: http://github.com/Starkku/MapTool
 
-* http://github.com/Starkku/MapTool
+Downloads: https://github.com/Starkku/MapTool/releases
 
-Downloads: 
-
-* https://github.com/Starkku/MapTool/releases
+Download for latest build (automatically generated from latest commit in `master` branch) can be found [here](https://github.com/Starkku/MapTool/releases/tag/latest).
 
 ## Installation
 
-As of current, MapTool has been designed to run on Windows operating systems, with Microsoft .NET Framework 4.0 as a requirement. Installation is simple, just place all of the required program files in a directory of your choice, and run it from there. 
+As of current, MapTool has been designed to run on Windows operating systems, with Microsoft .NET Framework 4.8 as a requirement. Installation is simple, just place all of the required program files in a directory of your choice, and run it from there. 
 
 ## Usage
 
