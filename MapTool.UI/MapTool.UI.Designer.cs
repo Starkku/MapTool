@@ -78,6 +78,7 @@ namespace MapTool.UI
             this.labelAboutOSCode = new System.Windows.Forms.Label();
             this.linkLabelAboutGithub = new System.Windows.Forms.LinkLabel();
             this.labelAboutCopyright = new System.Windows.Forms.Label();
+            this.labelExtraCredits2 = new System.Windows.Forms.Label();
             this.contextMenuStripListFiles.SuspendLayout();
             this.contextMenuStripListProfiles.SuspendLayout();
             this.tabControl.SuspendLayout();
@@ -350,6 +351,7 @@ namespace MapTool.UI
             // 
             // tabPageAbout
             // 
+            this.tabPageAbout.Controls.Add(this.labelExtraCredits2);
             this.tabPageAbout.Controls.Add(this.linkLabelRefNDesk);
             this.tabPageAbout.Controls.Add(this.linkLabelRefMiniLZO);
             this.tabPageAbout.Controls.Add(this.linkLabelRefSHOpen);
@@ -495,6 +497,15 @@ namespace MapTool.UI
             this.labelAboutCopyright.TabIndex = 0;
             this.labelAboutCopyright.Text = "Program by Starkku © 2017-2020";
             // 
+            // labelExtraCredits2
+            // 
+            this.labelExtraCredits2.AutoSize = true;
+            this.labelExtraCredits2.Location = new System.Drawing.Point(11, 288);
+            this.labelExtraCredits2.Name = "labelExtraCredits2";
+            this.labelExtraCredits2.Size = new System.Drawing.Size(353, 13);
+            this.labelExtraCredits2.TabIndex = 11;
+            this.labelExtraCredits2.Text = "• Messiah: Cross-game theater conversion profiles included with releases.";
+            // 
             // MapToolUI
             // 
             this.AllowDrop = true;
@@ -566,6 +577,7 @@ namespace MapTool.UI
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemListProfilesShowExplorer;
         private System.Windows.Forms.LinkLabel linkLabelRefMiniLZO;
         private System.Windows.Forms.LinkLabel linkLabelRefNDesk;
+        private System.Windows.Forms.Label labelExtraCredits2;
     }
 }
 
